@@ -139,12 +139,13 @@ int main() {
             cur.x = (cur.x - 1 + BORD_WIDTH) % BORD_WIDTH; // x座標を1減らす
         } else if (ch == KEY_RIGHT) {
             cur.x = (cur.x + 1) % BORD_WIDTH; // x座標を1増やす
-        } else if (ch == '\n') {
+        } else if (ch == '\n' && point[cur.y][cur.x] == 0) {
             if (player_turn == BLACK_STONE) point[cur.y][cur.x] = BLACK_STONE;
             else if (player_turn == WHITE_STONE) point[cur.y][cur.x] = WHITE_STONE;
+
+            player_turn *= -1;
         }
         printField();
-        player_turn *= -1;
     }
 
     endwin();
