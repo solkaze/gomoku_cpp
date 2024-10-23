@@ -4,6 +4,9 @@
 #include <vector>
 #include <string>
 #include <utility>
+
+#define BLACK_STONE (1)
+#define WHITE_STONE (-1)
 class Gomoku {
 public:
     Gomoku():
@@ -11,6 +14,9 @@ public:
         x(0),
         y(0)
     {}
+
+    void put_stone(int x, int y, int color);
+    void print_field();
 
 private:
 
