@@ -11,13 +11,14 @@
 class Gomoku {
 public:
     Gomoku():
-        point(grid_size, std::vector<int>(grid_size, 0)),
         x(0),
-        y(0)
+        y(0),
+        point(grid_size, std::vector<int>(grid_size, 0))
     {}
 
-    void put_stone(int x, int y, int color);
+    void put_stone(int y, int x, int color);
     void print_field();
+    void move_player(int ch, int& turn);
 
 private:
 

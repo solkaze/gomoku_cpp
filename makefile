@@ -1,7 +1,9 @@
 PROGRAM = gomoku
 
 CC = g++
-CFLAGS = -Wall -O3 -lncursesw -I$(INCLUDE_DIR)
+CFLAGS = -Wall -O3 -I$(INCLUDE_DIR)
+
+LDFLAGS = -lncursesw
 
 SRC_DIR = src
 INCLUDE_DIR = include
