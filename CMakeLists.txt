@@ -23,7 +23,7 @@ set(SRC
 )
 
 set(HEADERS
-  include/gomoku_ai.hpp
+  include/gomoku.hpp
 )
 
 add_executable(gomoku ${SRC} ${HEADERS})
@@ -36,5 +36,3 @@ target_compile_options(gomoku PRIVATE -Wall -Wextra -g3 -O2)
 
 # インクルードディレクトリを指定
 target_include_directories(gomoku PRIVATE ${Curses_INCLUDE_DIRS} include)
-
-target_link_libraries(gomoku PRIVATE ${Curses_LIBRARIES} ncursesw)

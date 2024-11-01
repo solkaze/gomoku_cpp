@@ -1,106 +1,59 @@
-#include <iostream>
+//------------------------------------------------------------------------
+// 五目ならべAI
+//  ここを作る．
+//  下記のサンプルは，直前に自分が置いた石の8近傍のどこかにランダムに石を置くだけ
+//
+//  引数説明
+//    board[BOARD_SIZE][BORARD_SIZE]：五目並べの盤
+//    com ： コンピュータが白石(STONE_WHITE)か黒石(STONE_BLACK)かを表す．
+//    pos_x, pos_y：石を置く場所のx座標，y座標 両方出力用
+//------------------------------------------------------------------------
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <stdbool.h>
 #include <vector>
-#include <string>
-#include <algorithm>
-#include <random>
-#include <ncurses.h>
+#include <cmath>
+#include <numeric>
+#include "gomoku.hpp"
 
-#include "gomoku_ai.hpp"
+// 目標5段
+const int max_dipth = 3;
+const int INF = std::numeric_limits<int>::max();
 
-void Gomoku::put_stone(int y, int x, int color) {
-		point[y][x] = color;
+const std::pair<int, int> directions[4] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+
+enum class Player { EMPTY, PLAYER1, PLAYER2 };
+using Board = std::vector<std::vector<Player>>;
+
+int alpha_beta(int& Board) {
+
 }
 
-void Gomoku::move_player(int ch, int& turn) {
-	// grid_size = 15
-	switch (ch) {
-		case KEY_UP:
-			if (y > 0) y--;
-			break;
-		case KEY_DOWN:
-			if (y < grid_size) y++;
-			break;
-		case KEY_LEFT:
-			if (x > 0) x--;
-			break;
-		case KEY_RIGHT:
-			if (x < grid_size) x++;
-			break;
-		case ' ':
-			if (point[y][x] == 0) {
-				put_stone(y, x, turn);
-				turn *= -1;
-			}
-			break;
-		default:
-			break;
-	}
+std::pair<int, int> find_best_move(int Board[][BOARD_SIZE]) {
+    int best_score = -INF;
+    std::pair<int, int> best_move = {-1, -1};
+
+	return best_move;
 }
 
-void Gomoku::print_field() {
-		//　フィールド表示
-	int delay = 3;
-	attron(COLOR_PAIR(1)); // 碁盤の色を設定
-	for (size_t i = 0; i < field.size(); ++i) mvprintw(delay + i, delay, "%s", field[i].c_str());
-	attroff(COLOR_PAIR(1)); // 色設定を解除
-	int rows = point.size();
-	int cols = point.size();
+int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
+	static bool start_flag = true;
 
-	// 上から石を配置
-	for (int i = 0; i < rows; ++i) {
-		for (int j = 0; j < cols; ++j) {
-			if (point[i][j] == 1) {
-				attron(COLOR_PAIR(2));
-				mvprintw(delay + pointer[i][j].second, delay + pointer[i][j].first, "%s", "O");
-				attron(COLOR_PAIR(2));
-			} else if (point[i][j] == -1) {
-				attron(COLOR_PAIR(3));
-				mvprintw(delay + pointer[i][j].second, delay + pointer[i][j].first, "%s", "O");
-				attroff(COLOR_PAIR(3));
-			}
-		}
+	// コンピュータが初手の場合の処理
+	// 先手は黒
+	if (start_flag && com == STONE_BLACK) {
+		*pos_x = BOARD_SIZE / 2;
+		*pos_y = BOARD_SIZE / 2;
+		start_flag = false;
+		return 0;
 	}
-	//　更に自身のカーソルを表示
-	attron(COLOR_PAIR(4));
-	mvprintw(delay + pointer[y][x].second, delay + pointer[y][x].first, "%s", "_");
-	attroff(COLOR_PAIR(4));
 
-	refresh();
-}
+	std::pair<int, int> best_move = find_best_move(board);
 
-int Gomoku::check_win(int color) {
-	int color = point[y][x];
-	int count = 0;
-	int dx[] = {0, 1, 1, -1};
-	int dy[] = {1, 0, 1, 1};
+	*pos_x = best_move.first;
+	*pos_y = best_move.second;
 
-	for (int i = 0; i < 4; ++i) {
-		for (int j = -4; j < 5; ++j) {
-			int nx = x + j * dx[i];
-			int ny = y + j * dy[i];
-
-			if (nx >= 0 && nx < grid_size && ny >= 0 && ny < grid_size) {
-				if (point[ny][nx] == color) {
-					count++;
-					if (count == 5) return color;
-				} else {
-					count = 0;
-				}
-			}
-		}
-	}
 	return 0;
-}
-
-// アルファ・ベータ法のアルゴリズム
-int Gomoku::evalute_boad() {
-	int senter_x = grid_size / 2;
-	int senter_y = grid_size / 2;
-
-	int grid_max = grid_size * grid_size;
-
-	int count = 0;
-
-	for (int i = 0; i < grid_max; ++i) {
-	}
 }
