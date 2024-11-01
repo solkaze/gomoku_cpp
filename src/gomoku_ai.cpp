@@ -16,6 +16,8 @@
 #include <vector>
 #include <cmath>
 #include <numeric>
+#include <thread>   // for std::this_thread::sleep_for
+#include <chrono>   // for std::chrono::seconds
 #include "gomoku.hpp"
 
 // 目標5段
@@ -27,17 +29,74 @@ const std::pair<int, int> directions[4] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
 enum class Player { EMPTY, PLAYER1, PLAYER2 };
 using Board = std::vector<std::vector<Player>>;
 
-int alpha_beta(int& Board) {
-
+// 評価関数
+int evaluate(const Board& board, Player currentPlayer) {
+    // 五目並べのルールに基づいて評価を実装
+    // 実装例: 現状の評価関数の一部
+    return 0; // 評価値（暫定）
 }
 
-std::pair<int, int> find_best_move(int Board[][BOARD_SIZE]) {
+// アルファ・ベータ法
+int alpha_beta(int board[][BOARD_SIZE], int dipth, int alpha, int beta, int currentPlayer) {
+	const static int com = currentPlayer;
+	// 処理
+}
+
+// 探索開始
+std::pair<int, int> find_best_move(int board[][BOARD_SIZE], int com) {
     int best_score = -INF;
     std::pair<int, int> best_move = {-1, -1};
+
+	// 探索初期位置
+	int ai_x = BOARD_SIZE / 2;
+	int ai_y = BOARD_SIZE / 2;
+
+	int board_max = BOARD_SIZE * BOARD_SIZE;
+	int direct_index = 0;
+	int move_length = 1;
+
+	int count = 0;
+
+	// らせん型に探索
+	while (true) {
+		
+		for (int i = 0; i < 2; ++i) {
+			int dx = directions[direct_index].first;
+			int dy = directions[direct_index].second;
+
+			for (int j = 0; j < move_length; ++j) {
+				if (board[ai_x][ai_y] == STONE_SPACE) {
+					board[ai_x][ai_y] = com;
+
+					int eval_score = alpha_beta(board, 0, -INF, INF, com);
+
+					board[ai_x][ai_y] = STONE_SPACE;
+
+					if (eval_score > best_score) {
+						best_score = eval_score;
+						best_move = std::make_pair(ai_x, ai_y);
+					}
+				}
+				// 次の手に備えた処理
+				++count;
+				if (count >= board_max) goto END_LOOP;
+
+				ai_x += dx;
+				ai_y += dy;
+			}
+
+			// 方向転換
+			direct_index = (direct_index + 1) % 4;
+		}
+		++move_length;
+	}
+
+	END_LOOP:
 
 	return best_move;
 }
 
+// コマを置く処理
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
 	static bool start_flag = true;
 
@@ -50,7 +109,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
 		return 0;
 	}
 
-	std::pair<int, int> best_move = find_best_move(board);
+	std::pair<int, int> best_move = find_best_move(board, com);
 
 	*pos_x = best_move.first;
 	*pos_y = best_move.second;

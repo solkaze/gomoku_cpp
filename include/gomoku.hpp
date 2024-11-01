@@ -19,3 +19,5 @@ extern int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 extern int checkOutPos(int x, int y);
 
 extern int check;
+
+void boardPrint(int board[][BOARD_SIZE]);
