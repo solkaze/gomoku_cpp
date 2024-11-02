@@ -154,7 +154,7 @@ void boardPrint(int board[][BOARD_SIZE]) {
             printf("  ");
     }
     puts("");
-    printf("    ");
+    printf("   ");
     for(i = 0; i < BOARD_SIZE; i++) {
         printf("%d ", i % 10);
     }

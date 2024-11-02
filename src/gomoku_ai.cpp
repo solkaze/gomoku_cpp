@@ -20,7 +20,7 @@ int evaluate(int board[][BOARD_SIZE]);
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool maximizingPlayer);
 
-// 最適な動きの導出
+// 最適解探索
 std::pair<int, int> findBestMove(int board[][BOARD_SIZE]);
 
 // gomoku.cppに配置を返す
@@ -31,6 +31,9 @@ bool isFull(int board[][BOARD_SIZE]);
 
 // 勝利確認
 bool isWin(int board[][BOARD_SIZE], int stone);
+
+// 範囲外確認
+bool isOutOfRange(int x, int y);
 
 
 //* ==================================================
@@ -52,16 +55,16 @@ const std::array<std::array<int, 2>, 8> DIRECTIONS = {{{-1, 0}, {0, 1}, {1, 0}, 
 // アルファ・ベータ法最大深度
 const int MAX_DEPTH = 4;
 
+
+//* ==================================================
+//*     定数
+//* ==================================================
+
 // コンパイル時初期化のための定数 15マス
 constexpr int kBoardSize = BOARD_SIZE;
 
 // すべてのマスの数 225マス
 constexpr int TOTAL_CELLS = kBoardSize * kBoardSize;
-
-
-//* ==================================================
-//*     定数
-//* ==================================================
 
 // コンパイル時に自動生成
 // これにより実行時間の効率化を図る 
@@ -93,9 +96,16 @@ constexpr std::array<std::pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
 // これもコンパイル時に自動生成
 constexpr auto SpiralMoves = generateSpiralMoves();
 
+
 //* ==================================================
 //* 主要関数実装
 //* ==================================================
+
+
+// 範囲外確認
+bool isOutOfRange(int x, int y) {
+    return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE; 
+}
 
 // 満杯確認
 bool isFull(int board[][BOARD_SIZE]) {
@@ -116,7 +126,7 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
                 int count = 1;
                 for (int i = 1; i < 5; ++i) {
                     int ny = y + i * dy, nx = x + i * dx;
-                    if (ny < 0 || ny >= BOARD_SIZE || nx < 0 || nx >= BOARD_SIZE || board[ny][nx] != stone) break;
+                    if (isOutOfRange(x, y)) break;
                     ++count;
                 }
                 if (count == 5) return true;
@@ -130,7 +140,8 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMaximizingPlayer) {
     // これ以上探索しないとき
-    if (depth == 0 || isFull(board)) {
+    int stone = isMaximizingPlayer ? comStone : playerStone;
+    if (depth == 0 || isFull(board) || isWin(board, stone)) {
         return evaluate(board);
     }
 
@@ -163,6 +174,7 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
     }
 }
 
+// 最適解探索
 std::pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
     int bestVal = -INF;
     std::pair<int, int> bestMove = {-1, -1};
