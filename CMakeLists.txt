@@ -5,7 +5,7 @@ project(Gomoku_ai)
 message("project name is automaically set as: ${PROJECT_NAME}")
 
 set(PROJECT_VERSION 1.0.0)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -21,6 +21,8 @@ set(HEADERS
 
 add_executable(gomoku ${SRC} ${HEADERS})
 target_include_directories(gomoku PUBLIC include)
+
+add_definitions(-DDATA_PATH="${CMAKE_SOURCE_DIR}/data/")
 
 target_compile_options(gomoku PRIVATE -Wall -Wextra -g3 -O2)
 
