@@ -126,7 +126,7 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
                 int count = 1;
                 for (int i = 1; i < 5; ++i) {
                     int ny = y + i * dy, nx = x + i * dx;
-                    if (isOutOfRange(x, y)) break;
+                    if (isOutOfRange(nx, ny)) break;
                     ++count;
                 }
                 if (count == 5) return true;
