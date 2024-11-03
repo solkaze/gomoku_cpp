@@ -137,6 +137,19 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
     return false;
 }
 
+// 評価関数
+int evaluate(int board[][BOARD_SIZE]) {
+    int score = 0;
+    for (const auto& [y, x] : SpiralMoves) {
+        if (board[y][x] == comStone) {
+            score += 10;
+        } else if (board[y][x] == playerStone) {
+            score -= 10;
+        }
+    }
+    return score;
+}
+
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMaximizingPlayer) {
     // これ以上探索しないとき
