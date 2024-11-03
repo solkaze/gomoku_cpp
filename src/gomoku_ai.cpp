@@ -147,7 +147,6 @@ int evaluate(int board[][BOARD_SIZE]) {
             score -= 10;
         }
     }
-    return score;
 }
 
 // アルファ・ベータ法
