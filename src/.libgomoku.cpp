@@ -51,7 +51,7 @@ int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Boa
             }
             if((check & CHOLEN) && board[i][j] == STONE_BLACK &&
                (isRoku(board, j, i) == true)) {
-                printf("長連の禁じ手です。%sの勝ちです\n", "○");
+                printf("長連の禁じ手です。%sの勝ちです\n", "○ ");
                 return 1;
             }
         }}
@@ -63,7 +63,7 @@ int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Boa
             }
             if(lenCheck(board, j, i)) {
                 printf("%sの勝ちです。\n",
-                       (board[i][j] == STONE_BLACK) ? "●" : "○");
+                       (board[i][j] == STONE_BLACK) ? "● " : "○ ");
                 return 1;
             }
         }}
@@ -78,7 +78,7 @@ int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Boa
                 //printf("33num:%d\n", num);
                 if((num>0)&&(c33Board[i][j]==0)&&(num!=LEFT)&&(num!=TATE)&&(num!=YOKO)&&(num!=RIGT)){
                     //printf("33 i=%d j=%d c33Board[i][j]=%d\n", i,j,c33Board[i][j]);
-                    printf("三三の禁じ手です。%sの勝ちです\n", "○");
+                    printf("三三の禁じ手です。%sの勝ちです\n", "○ ");
                     return 1;}
                 if((num > 0)&&(c33Board[i][j]!=num)&&(n_san == 0)){
                     tmp_x=j;tmp_y=i;
@@ -93,7 +93,7 @@ int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Boa
                     n_san++;
                     c33Board[i][j]=num;
                     if (c33Board[tmp_y][tmp_x]!=c33Board[i][j]){
-                     printf("三三の禁じ手です。%sの勝ちです\n", "○");
+                     printf("三三の禁じ手です。%sの勝ちです\n", "○ ");
                      return 1;}
                  }
             
@@ -104,7 +104,7 @@ int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Boa
                 //printf("44num:%d\n", num);
                 if((num>0)&&(c44Board[i][j]==0)&&(num!=LEFT)&&(num!=TATE)&&(num!=YOKO)&&(num!=RIGT)){
                     //printf("44num-0:%d\n", num);
-                    printf("四四の禁じ手です。%sの勝ちです\n", "○");
+                    printf("四四の禁じ手です。%sの勝ちです\n", "○ ");
                     return 1;}
                 if((num > 0)&&(c44Board[i][j]!=num)&&(n_shi == 0)){
                     tmp_x=j;tmp_y=i;
@@ -122,7 +122,7 @@ int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Boa
                     if (c44Board[tmp_y][tmp_x]!=c44Board[i][j]){
                      printf("四四の禁じ手です。%sの勝ちです\n", "○");
                      return 1;} else if (distance(tmp_y,tmp_x,i,j)>2){
-                     printf("四四の禁じ手です。%sの勝ちです\n", "○");
+                     printf("四四の禁じ手です。%sの勝ちです\n", "○ ");
                      return 1;}
                  }
             }

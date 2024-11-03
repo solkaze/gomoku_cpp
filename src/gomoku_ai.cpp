@@ -6,6 +6,9 @@
 #include <chrono>
 #include <thread>
 #include <array>
+#include <future>
+#include <atomic>
+#include <mutex>
 
 #include "gomoku.hpp"
 
@@ -147,6 +150,8 @@ int evaluate(int board[][BOARD_SIZE]) {
             score -= 10;
         }
     }
+
+    return score;
 }
 
 // アルファ・ベータ法
@@ -190,19 +195,56 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
 std::pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
     int bestVal = -INF;
     std::pair<int, int> bestMove = {-1, -1};
+    std::vector<std::future<std::pair<int, std::pair<int, int>>>> futures;
+    std::mutex mtx; // 排他制御用
+    std::atomic<int> threadCount(0); // 実行スレッド数
 
+    const int max_threads = 8;
+
+    // 各手を分割して並行処理
     for (const auto& [y, x] : SpiralMoves) {
         if (board[y][x] == STONE_SPACE) {
-            board[y][x] = comStone;
-            int moveVal = alphaBeta(board, MAX_DEPTH, -INF, INF, true);
-            board[y][x] = STONE_SPACE;
-            if (moveVal > bestVal) {
-                bestMove = std::make_pair(y, x);
-                bestVal = moveVal;
+            // スレッドの上限を維持
+            if (futures.size() >= max_threads) {
+                for (auto& fut : futures) {
+                    auto [moveVal, pos] = fut.get(); // 結果を取得
+                    std::lock_guard<std::mutex> lock(mtx); // 排他制御
+                    if (moveVal > bestVal) {
+                        bestVal = moveVal;
+                        bestMove = pos;
+                    }
+                }
+                futures.clear();
             }
+
+            // 新しいスレッドで評価を非同期実行
+            futures.emplace_back(std::async(std::launch::async, [&board, y, x, &mtx, &threadCount]() {
+                int localBoard[BOARD_SIZE][BOARD_SIZE];
+                std::copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
+
+                localBoard[y][x] = comStone;
+                int moveVal = alphaBeta(localBoard, MAX_DEPTH, -INF, INF, true);
+                localBoard[y][x] = STONE_SPACE;
+
+                // スレッド数をカウント
+                threadCount++;
+                return std::make_pair(moveVal, std::make_pair(y, x));
+            }));
         }
     }
 
+    // 残りのスレッド結果を反映
+    for (auto& fut : futures) {
+        auto [moveVal, pos] = fut.get();
+        std::lock_guard<std::mutex> lock(mtx);
+        if (moveVal > bestVal) {
+            bestVal = moveVal;
+            bestMove = pos;
+        }
+    }
+
+    // スレッド数を出力
+    std::cout << "実行されたスレッド数: " << threadCount.load() << std::endl;
     return bestMove;
 }
 
@@ -225,7 +267,6 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
 
     // メイン処理
     std::pair<int, int> bestMove = findBestMove(board);
-
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
     return 0;
