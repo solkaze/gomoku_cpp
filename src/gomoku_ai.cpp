@@ -9,16 +9,42 @@
 #include <future>
 #include <atomic>
 #include <mutex>
+#include <unordered_map>
+#include <shared_mutex>
 
 #include "gomoku.hpp"
 
+//* ==================================================
+//*     トランスポーテーションテーブル
+//* ==================================================
+
+struct TranspositionEntry {
+    int value;  // 評価値
+    int depth;  // 探索した深さ
+    int flag;   // 何の条件で保存したか (0:Exact, 1:Upper Bound, 2:Lower Bound)
+};
 
 //* ==================================================
 //*     関数宣言
 //* ==================================================
 
-// 評価関数
-int evaluate(int board[][BOARD_SIZE]);
+// ハッシュ関数
+uint64_t generateHash(int board[][BOARD_SIZE]);
+
+// トランスポジションテーブルの参照
+bool lookupTransposition(uint64_t key, int depth, int& value, int& flag);
+
+// トランスポジションテーブルへの保存
+void storeTransposition(uint64_t key, int depth, int value, int flag);
+
+// ボード評価関数
+int evaluateBoard(int board[][BOARD_SIZE]);
+
+// 一列の評価関数
+int evaluateLine(int board[][BOARD_SIZE], int stone);
+
+// 石ごとの評価関数
+int evaluateStone(int stone, int consecutive, int openEnds);
 
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool maximizingPlayer);
@@ -49,19 +75,49 @@ int comStone;
 // プレイヤーの石
 int playerStone;
 
-// int型の最大数
-const int INF = std::numeric_limits<int>::max();
+// トランスポジションテーブルの定義
+std::unordered_map<uint64_t, TranspositionEntry> transpositionTable;
 
-// 方向の決定
-const std::array<std::array<int, 2>, 8> DIRECTIONS = {{{-1, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}}};
-
-// アルファ・ベータ法最大深度
-const int MAX_DEPTH = 4;
+// ミューテックスの定義
+std::shared_mutex transTableMutex;
 
 
 //* ==================================================
 //*     定数
 //* ==================================================
+
+// int型の最大数
+constexpr int INF = std::numeric_limits<int>::max();
+
+// スコアの設定
+constexpr int SCORE_FIVE_IN_A_ROW = 1000000;
+constexpr int SCORE_OPEN_FOUR     = 10000;
+constexpr int SCORE_CLOSED_FOUR   = 5000;
+constexpr int SCORE_OPEN_THREE    = 1000;
+constexpr int SCORE_CLOSED_THREE  = 500;
+
+// 方向の決定
+constexpr std::array<std::array<int, 2>, 8> DIRECTIONS_WIN = {{
+    {-1, 0},
+    {0, 1},
+    {1, 0},
+    {0, -1},
+    {-1, -1},
+    {-1, 1},
+    {1, -1},
+    {1, 1}
+}};
+
+// 評価関数用方向
+constexpr std::array<std::array<int, 2>, 4> DIRECTIONS_EVA = {{
+    {0, 1},
+    {1, 0},
+    {1, 1},
+    {1, -1}
+}};
+
+// アルファ・ベータ法最大深度
+constexpr int MAX_DEPTH = 4;
 
 // コンパイル時初期化のための定数 15マス
 constexpr int kBoardSize = BOARD_SIZE;
@@ -70,7 +126,7 @@ constexpr int kBoardSize = BOARD_SIZE;
 constexpr int TOTAL_CELLS = kBoardSize * kBoardSize;
 
 // コンパイル時に自動生成
-// これにより実行時間の効率化を図る 
+// これにより実行時間の効率化を図る
 constexpr std::array<std::pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     std::array<std::pair<int, int>, TOTAL_CELLS> moves{};
     int cx = kBoardSize / 2, cy = kBoardSize / 2;
@@ -104,10 +160,43 @@ constexpr auto SpiralMoves = generateSpiralMoves();
 //* 主要関数実装
 //* ==================================================
 
+// ハッシュ関数
+uint64_t generateHash(int board[][BOARD_SIZE]) {
+    uint64_t hash = 0;
+    for (int y = 0; y < BOARD_SIZE; ++y) {
+        for (int x = 0; x < BOARD_SIZE; ++x) {
+            int piece = board[y][x];
+            hash ^= std::hash<int>{}(piece * (31 * (y * BOARD_SIZE + x)));
+        }
+    }
+    return hash;
+}
+
+// トランスポジションテーブルの参照
+bool lookupTransposition(uint64_t key, int depth, int& value, int& flag) {
+    std::shared_lock lock(transTableMutex);  // 読み取りロック
+    auto it = transpositionTable.find(key);
+    if (it != transpositionTable.end()) {
+
+        // 深さが一致しているか、深さがより大きい（進んでいる）場合のみ
+        if (it->second.depth >= depth) {
+            value = it->second.value;
+            flag = it->second.flag;
+            return true;
+        }
+    }
+    return false;
+}
+
+// トランスポジションテーブルへの保存
+void storeTransposition(uint64_t key, int depth, int value, int flag) {
+    std::unique_lock lock(transTableMutex);  // 書き込みロック
+    transpositionTable[key] = {value, depth, flag};
+}
 
 // 範囲外確認
 bool isOutOfRange(int x, int y) {
-    return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE; 
+    return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
 }
 
 // 満杯確認
@@ -122,10 +211,10 @@ bool isFull(int board[][BOARD_SIZE]) {
 
 // 勝利確認
 bool isWin(int board[][BOARD_SIZE], int stone) {
-    
+
     for (const auto& [y, x] : SpiralMoves) {
         if (board[y][x] == stone) {
-            for (const auto& [dy, dx] : DIRECTIONS) {
+            for (const auto& [dy, dx] : DIRECTIONS_WIN) {
                 int count = 1;
                 for (int i = 1; i < 5; ++i) {
                     int ny = y + i * dy, nx = x + i * dx;
@@ -140,26 +229,105 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
     return false;
 }
 
-// 評価関数
-int evaluate(int board[][BOARD_SIZE]) {
+// ストーンごとのスコアを取得する関数
+int getScoreForStone(int stone, int consecutive, int openEnds) {
+    if (stone == comStone) {
+        if (consecutive >= 5) return SCORE_FIVE_IN_A_ROW;
+        else if (consecutive == 4) return (openEnds == 2) ? SCORE_OPEN_FOUR : SCORE_CLOSED_FOUR;
+        else if (consecutive == 3) return (openEnds == 2) ? SCORE_OPEN_THREE : SCORE_CLOSED_THREE;
+    } else if (stone == playerStone) {
+        // 相手の手の場合はスコアをマイナスにする
+        if (consecutive >= 5) return -SCORE_FIVE_IN_A_ROW;
+        else if (consecutive == 4) return (openEnds == 2) ? -SCORE_OPEN_FOUR : -SCORE_CLOSED_FOUR;
+        else if (consecutive == 3) return (openEnds == 2) ? -SCORE_OPEN_THREE : -SCORE_CLOSED_THREE;
+    }
+    return 0;  // それ以外の場合
+}
+
+// 石の並びを評価する関数
+int evaluateLine(const std::vector<int>& line) {
     int score = 0;
-    for (const auto& [y, x] : SpiralMoves) {
-        if (board[y][x] == comStone) {
-            score += 10;
-        } else if (board[y][x] == playerStone) {
-            score -= 10;
+    int consecutive = 0;
+    int openEnds = 0;
+
+    for (size_t i = 0; i < line.size(); i++) {
+        if (line[i] != STONE_SPACE) {
+            int stone = line[i];
+            consecutive = 1;
+            openEnds = 0;
+
+            // 前方に空きマスがあれば1加算
+            if (i > 0 && line[i - 1] == STONE_SPACE) openEnds++;
+
+            // 同じ色の石がどれだけ続くかをカウント
+            while (i + consecutive < line.size() && line[i + consecutive] == stone) {
+                consecutive++;
+            }
+
+            // 後方に空きマスがあれば1加算
+            if (i + consecutive < line.size() && line[i + consecutive] == STONE_SPACE) openEnds++;
+
+            // 評価
+            score += getScoreForStone(stone, consecutive, openEnds);
+
+            // 評価済み部分を飛ばす
+            i += consecutive - 1;
         }
     }
 
     return score;
 }
 
+
+// 各方向での評価を行う
+int evaluateBoard(int board[][BOARD_SIZE]) {
+    int totalScore = 0;
+
+    for (int row = 0; row < BOARD_SIZE; row++) {
+        for (int col = 0; col < BOARD_SIZE; col++) {
+
+            if (board[row][col] != STONE_SPACE) {
+                for (const auto& direction : DIRECTIONS_EVA) {
+                    std::vector<int> line;
+                    int x = row, y = col;
+
+                    // 連続する石の並びを取得
+                    while (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
+                        line.push_back(board[x][y]);
+                        x += direction[0];
+                        y += direction[1];
+                    }
+
+                    // ラインを評価
+                    totalScore += evaluateLine(line);
+                }
+            }
+        }
+    }
+
+    return totalScore;
+}
+
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMaximizingPlayer) {
+
+    // ハッシュキーの生成
+    uint64_t hashKey = generateHash(board);
+
+    // トランスポジションテーブルの参照
+    int transValue;
+    int transFlag;
+    if (lookupTransposition(hashKey, depth, transValue, transFlag)) {
+        return transValue;
+    }
+
+
     // これ以上探索しないとき
     int stone = isMaximizingPlayer ? comStone : playerStone;
     if (depth == 0 || isFull(board) || isWin(board, stone)) {
-        return evaluate(board);
+        int eval = evaluateBoard(board);
+        // storeTransposition(hashKey, depth, eval, 0); // 結果の保存
+        return eval;
     }
 
     if (isMaximizingPlayer) {
