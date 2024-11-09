@@ -11,31 +11,41 @@
 #include <mutex>
 #include <unordered_map>
 #include <shared_mutex>
+#include <random>
 
 #include "gomoku.hpp"
 
 //* ==================================================
-//*     トランスポーテーションテーブル
+//*     構造体、クラス
 //* ==================================================
 
+enum class BoundType {
+    EXACT,
+    UPPER_BOUND,
+    LOWER_BOUND
+};
+
 struct TranspositionEntry {
-    int value;  // 評価値
-    int depth;  // 探索した深さ
-    int flag;   // 何の条件で保存したか (0:Exact, 1:Upper Bound, 2:Lower Bound)
+    int value;              // 評価値
+    int depth;              // 探索した深さ
+    BoundType boundType;    // 何の条件で保存したか (Exact, Upper Bound, Lower Bound)
 };
 
 //* ==================================================
 //*     関数宣言
 //* ==================================================
 
-// ハッシュ関数
-uint64_t generateHash(int board[][BOARD_SIZE]);
+// Zobristハッシュの初期化
+void initZobristTable();
 
-// トランスポジションテーブルの参照
-bool lookupTransposition(uint64_t key, int depth, int& value, int& flag);
+// ハッシュキーの更新
+void updateHashKey(int y, int x, int stone);
 
-// トランスポジションテーブルへの保存
-void storeTransposition(uint64_t key, int depth, int value, int flag);
+// テーブル参照関数
+bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue);
+
+// テーブル保存関数
+void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundType);
 
 // ボード評価関数
 int evaluateBoard(int board[][BOARD_SIZE]);
@@ -75,11 +85,20 @@ int comStone;
 // プレイヤーの石
 int playerStone;
 
+// zobristハッシュ関数の定義
+std::array<std::array<uint64_t, 3>, BOARD_SIZE * BOARD_SIZE> zobristTable;
+
 // トランスポジションテーブルの定義
 std::unordered_map<uint64_t, TranspositionEntry> transpositionTable;
 
+// 共有ロック
+std::shared_mutex tableMutex;
+
 // ミューテックスの定義
 std::shared_mutex transTableMutex;
+
+// 参照
+uint64_t currentHashKey = 0;
 
 
 //* ==================================================
@@ -157,41 +176,50 @@ constexpr auto SpiralMoves = generateSpiralMoves();
 
 
 //* ==================================================
-//* 主要関数実装
+//*     関数実装
 //* ==================================================
 
-// ハッシュ関数
-uint64_t generateHash(int board[][BOARD_SIZE]) {
-    uint64_t hash = 0;
-    for (int y = 0; y < BOARD_SIZE; ++y) {
-        for (int x = 0; x < BOARD_SIZE; ++x) {
-            int piece = board[y][x];
-            hash ^= std::hash<int>{}(piece * (31 * (y * BOARD_SIZE + x)));
-        }
+// Zobristハッシュの初期化
+void initZobristTable() {
+    std::mt19937_64 rng(std::random_device{}());
+    for (int i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
+        zobristTable[i][0] = rng();
+        zobristTable[i][1] = rng();
+        zobristTable[i][2] = rng();
     }
-    return hash;
 }
 
-// トランスポジションテーブルの参照
-bool lookupTransposition(uint64_t key, int depth, int& value, int& flag) {
-    std::shared_lock lock(transTableMutex);  // 読み取りロック
-    auto it = transpositionTable.find(key);
+// トランスポジションテーブルを参照する関数（ロックを追加）
+bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue) {
+    std::shared_lock lock(tableMutex); // 読み込み時は共有ロック
+    auto it = transpositionTable.find(hashKey);
     if (it != transpositionTable.end()) {
-
-        // 深さが一致しているか、深さがより大きい（進んでいる）場合のみ
-        if (it->second.depth >= depth) {
-            value = it->second.value;
-            flag = it->second.flag;
-            return true;
+        const TranspositionEntry& entry = it->second;
+        if (entry.depth >= depth) {
+            if (entry.boundType == BoundType::EXACT) {
+                outValue = entry.value;
+                return true;
+            } else if (entry.boundType == BoundType::LOWER_BOUND && entry.value >= beta) {
+                outValue = entry.value;
+                return true;
+            } else if (entry.boundType == BoundType::UPPER_BOUND && entry.value <= alpha) {
+                outValue = entry.value;
+                return true;
+            }
         }
     }
     return false;
 }
 
-// トランスポジションテーブルへの保存
-void storeTransposition(uint64_t key, int depth, int value, int flag) {
-    std::unique_lock lock(transTableMutex);  // 書き込みロック
-    transpositionTable[key] = {value, depth, flag};
+// トランスポジションテーブルに結果を保存する関数（ロックを追加）
+void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundType) {
+    std::unique_lock lock(tableMutex); // 書き込み時は排他ロック
+    transpositionTable[hashKey] = {depth, value, boundType};
+}
+
+// ハッシュキーの更新
+void updateHashKey(int y, int x, int stone) {
+    currentHashKey ^= zobristTable[y * BOARD_SIZE + x][stone];
 }
 
 // 範囲外確認
@@ -310,51 +338,60 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
 
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMaximizingPlayer) {
-
-    // ハッシュキーの生成
-    uint64_t hashKey = generateHash(board);
-
-    // トランスポジションテーブルの参照
-    int transValue;
-    int transFlag;
-    if (lookupTransposition(hashKey, depth, transValue, transFlag)) {
-        return transValue;
-    }
-
-
-    // これ以上探索しないとき
     int stone = isMaximizingPlayer ? comStone : playerStone;
-    if (depth == 0 || isFull(board) || isWin(board, stone)) {
-        int eval = evaluateBoard(board);
-        // storeTransposition(hashKey, depth, eval, 0); // 結果の保存
+    int eval;
+
+    // トランスポーテーションテーブルの確認
+    // if (probeTranspositionTable(currentHashKey, depth, alpha, beta, eval)) {
+    //     return eval;
+    // }
+
+    // 探索の末端のとき
+    if (depth == MAX_DEPTH || isFull(board) || isWin(board, stone)) {
+        eval = evaluateBoard(board);
+        // storeTransposition(currentHashKey, depth, eval, BoundType::EXACT);
         return eval;
     }
 
+    // アルファ・ベータ法の本編
     if (isMaximizingPlayer) {
         int maxEval = -INF;
         for (const auto& [y, x] : SpiralMoves) {
             if (board[y][x] == STONE_SPACE) {
                 board[y][x] = comStone;
-                int eval = alphaBeta(board, depth - 1, alpha, beta, false);
+                updateHashKey(y, x, comStone);
+
+                int eval = alphaBeta(board, depth + 1, alpha, beta, false);
                 board[y][x] = STONE_SPACE;
+                updateHashKey(y, x, comStone);
+
                 maxEval = std::max(maxEval, eval);
                 alpha = std::max(alpha, eval);
-                if (beta <= alpha) break; // ベータカットオフ
+                if (beta <= alpha) break; // Beta cut-off
             }
         }
+        // BoundType boundType = (maxEval <= alpha) ? BoundType::UPPER_BOUND : ((maxEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
+        // storeTransposition(currentHashKey, depth, maxEval, boundType);
         return maxEval;
     } else {
         int minEval = INF;
         for (const auto& [y, x] : SpiralMoves) {
             if (board[y][x] == STONE_SPACE) {
                 board[y][x] = playerStone;
-                int eval = alphaBeta(board, depth - 1, alpha, beta, true);
+                updateHashKey(y, x, playerStone);
+
+                int eval = alphaBeta(board, depth + 1, alpha, beta, true);
                 board[y][x] = STONE_SPACE;
+                updateHashKey(y, x, playerStone);
+
                 minEval = std::min(minEval, eval);
                 beta = std::min(beta, eval);
-                if (beta <= alpha) break; // アルフアカットオフ
+                if (beta <= alpha) break; // Alpha cut-off
             }
         }
+        
+        // zBoundType boundType = (minEval <= alpha) ? BoundType::UPPER_BOUND : ((minEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
+        // storeTransposition(currentHashKey, depth, minEval, boundType);
         return minEval;
     }
 }
@@ -377,6 +414,7 @@ std::pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
                 for (auto& fut : futures) {
                     auto [moveVal, pos] = fut.get(); // 結果を取得
                     std::lock_guard<std::mutex> lock(mtx); // 排他制御
+                    std::cout << "座標と結果: y:" << pos.first << " x:" << pos.second << " moveVal:" << moveVal << std::endl;
                     if (moveVal > bestVal) {
                         bestVal = moveVal;
                         bestMove = pos;
@@ -386,12 +424,12 @@ std::pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
             }
 
             // 新しいスレッドで評価を非同期実行
-            futures.emplace_back(std::async(std::launch::async, [&board, y, x, &mtx, &threadCount]() {
+            futures.emplace_back(std::async(std::launch::async, [=, &board, &mtx, &threadCount]() {
                 int localBoard[BOARD_SIZE][BOARD_SIZE];
                 std::copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
 
                 localBoard[y][x] = comStone;
-                int moveVal = alphaBeta(localBoard, MAX_DEPTH, -INF, INF, true);
+                int moveVal = alphaBeta(localBoard, 0, -INF, INF, true);
                 localBoard[y][x] = STONE_SPACE;
 
                 // スレッド数をカウント
@@ -415,7 +453,6 @@ std::pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
     std::cout << "実行されたスレッド数: " << threadCount.load() << std::endl;
     return bestMove;
 }
-
 // コマ配置
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     static bool isFirst = true;
@@ -435,6 +472,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
 
     // メイン処理
     std::pair<int, int> bestMove = findBestMove(board);
+    std::cout << "おいた場所は( " << bestMove.first << "," << bestMove.second << " )" << std::endl;
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
     return 0;
