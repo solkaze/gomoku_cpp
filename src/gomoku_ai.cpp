@@ -341,15 +341,20 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
     int stone = isMaximizingPlayer ? comStone : playerStone;
     int eval;
 
+    boardPrint(board);
+    // 一秒待機
+    std::cout << "hashkey: " << currentHashKey << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+
     // トランスポーテーションテーブルの確認
-    // if (probeTranspositionTable(currentHashKey, depth, alpha, beta, eval)) {
-    //     return eval;
-    // }
+    if (probeTranspositionTable(currentHashKey, depth, alpha, beta, eval)) {
+        return eval;
+    }
 
     // 探索の末端のとき
     if (depth == MAX_DEPTH || isFull(board) || isWin(board, stone)) {
         eval = evaluateBoard(board);
-        // storeTransposition(currentHashKey, depth, eval, BoundType::EXACT);
+        storeTransposition(currentHashKey, depth, eval, BoundType::EXACT);
         return eval;
     }
 
@@ -370,8 +375,8 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
                 if (beta <= alpha) break; // Beta cut-off
             }
         }
-        // BoundType boundType = (maxEval <= alpha) ? BoundType::UPPER_BOUND : ((maxEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        // storeTransposition(currentHashKey, depth, maxEval, boundType);
+        BoundType boundType = (maxEval <= alpha) ? BoundType::UPPER_BOUND : ((maxEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
+        storeTransposition(currentHashKey, depth, maxEval, boundType);
         return maxEval;
     } else {
         int minEval = INF;
@@ -390,8 +395,8 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
             }
         }
         
-        // zBoundType boundType = (minEval <= alpha) ? BoundType::UPPER_BOUND : ((minEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        // storeTransposition(currentHashKey, depth, minEval, boundType);
+        BoundType boundType = (minEval <= alpha) ? BoundType::UPPER_BOUND : ((minEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
+        storeTransposition(currentHashKey, depth, minEval, boundType);
         return minEval;
     }
 }
@@ -453,6 +458,30 @@ std::pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
     std::cout << "実行されたスレッド数: " << threadCount.load() << std::endl;
     return bestMove;
 }
+
+// 最適解探索スレッドなし
+std::pair<int, int> findBestMoveSample(int board[][BOARD_SIZE]) {
+    int bestVal = -INF;
+    std::pair<int, int> bestMove = {-1, -1};
+
+    for (const auto& [y, x] : SpiralMoves) {
+        if (board[y][x] == STONE_SPACE) {
+            int localBoard[BOARD_SIZE][BOARD_SIZE];
+            std::copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
+
+            localBoard[y][x] = comStone;
+            int moveVal = alphaBeta(localBoard, 0, -INF, INF, false);
+            localBoard[y][x] = STONE_SPACE;
+
+            if (moveVal > bestVal) {
+                bestVal = moveVal;
+                bestMove = std::make_pair(y, x);
+            }
+        }
+    }
+
+    return bestMove;
+}
 // コマ配置
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     static bool isFirst = true;
@@ -471,7 +500,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     }
 
     // メイン処理
-    std::pair<int, int> bestMove = findBestMove(board);
+    std::pair<int, int> bestMove = findBestMoveSample(board);
     std::cout << "おいた場所は( " << bestMove.first << "," << bestMove.second << " )" << std::endl;
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
