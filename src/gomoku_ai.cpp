@@ -98,7 +98,7 @@ std::shared_mutex tableMutex;
 std::shared_mutex transTableMutex;
 
 // 参照
-uint64_t currentHashKey = 0;
+thread_local uint64_t currentHashKey = 0;
 
 
 //* ==================================================
@@ -394,7 +394,6 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
                 if (beta <= alpha) break; // Alpha cut-off
             }
         }
-        
         BoundType boundType = (minEval <= alpha) ? BoundType::UPPER_BOUND : ((minEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
         storeTransposition(currentHashKey, depth, minEval, boundType);
         return minEval;
