@@ -469,7 +469,7 @@ std::pair<int, int> findBestMoveSample(int board[][BOARD_SIZE]) {
             std::copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
 
             localBoard[y][x] = comStone;
-            int moveVal = alphaBeta(localBoard, 0, -INF, INF, false);
+            int moveVal = alphaBeta(localBoard, 0, bestVal, INF, false);
             localBoard[y][x] = STONE_SPACE;
 
             if (moveVal > bestVal) {
