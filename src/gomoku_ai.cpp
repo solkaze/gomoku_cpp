@@ -242,23 +242,30 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
 int evaluateLine(const vector<int>& line) {
     int score = 0;
 
-
+    for (int i = 0; i < line.size(); i++) {
+    }
 
     return score;
 }
 
 
-// 各方向での評価を行う
+// ボード全体の評価
 int evaluateBoard(int board[][BOARD_SIZE]) {
     int totalScore = 0;
 
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
             if (board[row][col] != STONE_SPACE) {
-                // 8方向の探索
+
+                // 禁じ手用bool
+                bool prohibited_three = false;
+                bool prohibited_four = false;
+                bool prohibited_long = false;
+
+                // 4方向の探索
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     vector<int> line;
-                    for (int i = -1; i < 5; i++) {
+                    for (int i = -1; i < 4; i++) {
                         int y = row + i * dy;
                         int x = col + i * dx;
                         if (isOutOfRange(x, y)) {
@@ -270,6 +277,9 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
 
                     totalScore += evaluateLine(line);
                 }
+
+                // 禁じ手処理
+
             }
         }
     }
