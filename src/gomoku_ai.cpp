@@ -21,7 +21,7 @@ struct TranspositionEntry {
 };
 
 //* ==================================================
-//*     関数宣言
+//*     プロトタイプ関数宣言
 //* ==================================================
 
 // Zobristハッシュの初期化
@@ -40,10 +40,7 @@ void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundT
 int evaluateBoard(int board[][BOARD_SIZE]);
 
 // 一列の評価関数
-int evaluateLine(int board[][BOARD_SIZE], int stone);
-
-// 石ごとの評価関数
-int evaluateStone(int stone, int consecutive, int openEnds);
+int evaluateLine(const vector<int>& line);
 
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool maximizingPlayer);
@@ -97,27 +94,17 @@ thread_local uint64_t currentHashKey = 0;
 // int型の最大数
 constexpr int INF = numeric_limits<int>::max();
 
-// スコアの設定
-constexpr int SCORE_FIVE_IN_A_ROW = 1000000;
+// スコア
+constexpr int SCORE_FIVE          = 1000000;
 constexpr int SCORE_OPEN_FOUR     = 10000;
 constexpr int SCORE_CLOSED_FOUR   = 5000;
 constexpr int SCORE_OPEN_THREE    = 1000;
 constexpr int SCORE_CLOSED_THREE  = 500;
-
-// 方向の決定
-constexpr array<array<int, 2>, 8> DIRECTIONS_WIN = {{
-    {-1, 0},
-    {0, 1},
-    {1, 0},
-    {0, -1},
-    {-1, -1},
-    {-1, 1},
-    {1, -1},
-    {1, 1}
-}};
+constexpr int SCORE_OPEN_TWO      = 100;
+constexpr int SCORE_CLOSED_TWO    = 50;
 
 // 評価関数用方向
-constexpr array<array<int, 2>, 4> DIRECTIONS_EVA = {{
+constexpr array<array<int, 2>, 4> DIRECTIONS = {{
     {0, 1},
     {1, 0},
     {1, 1},
@@ -125,19 +112,19 @@ constexpr array<array<int, 2>, 4> DIRECTIONS_EVA = {{
 }};
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 4;
+constexpr int MAX_DEPTH = 3;
 
 // コンパイル時初期化のための定数 15マス
-constexpr int kBoardSize = BOARD_SIZE;
+constexpr int K_BOARD_SIZE = BOARD_SIZE;
 
 // すべてのマスの数 225マス
-constexpr int TOTAL_CELLS = kBoardSize * kBoardSize;
+constexpr int TOTAL_CELLS = K_BOARD_SIZE * K_BOARD_SIZE;
 
 // コンパイル時に自動生成
 // これにより実行時間の効率化を図る
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     array<pair<int, int>, TOTAL_CELLS> moves{};
-    int cx = kBoardSize / 2, cy = kBoardSize / 2;
+    int cx = K_BOARD_SIZE / 2, cy = K_BOARD_SIZE / 2;
     moves[0] = {cx, cy};
 
     const int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
@@ -149,7 +136,7 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
             for (int j = 0; j < steps && index < TOTAL_CELLS; ++j) {
                 cx += directions[i][0];
                 cy += directions[i][1];
-                if (cx >= 0 && cx < kBoardSize && cy >= 0 && cy < kBoardSize) {
+                if (cx >= 0 && cx < K_BOARD_SIZE && cy >= 0 && cy < K_BOARD_SIZE) {
                     moves[index++] = {cx, cy};
                 }
             }
@@ -228,27 +215,34 @@ bool isFull(int board[][BOARD_SIZE]) {
 
 // 勝利確認
 bool isWin(int board[][BOARD_SIZE], int stone) {
-
-    for (const auto& [y, x] : SpiralMoves) {
-        if (board[y][x] == stone) {
-            for (const auto& [dy, dx] : DIRECTIONS_WIN) {
-                int count = 1;
-                for (int i = 1; i < 5; ++i) {
-                    int ny = y + i * dy, nx = x + i * dx;
-                    if (isOutOfRange(nx, ny)) break;
-                    ++count;
+    for (int row = 0; row < BOARD_SIZE; row++) {
+        for (int col = 0; col < BOARD_SIZE; col++) {
+            if (board[row][col] == stone) {
+                // 8方向の探索
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    int count = 1;
+                    for (int i = 1; i < 5; i++) {
+                        int y = row + i * dy;
+                        int x = col + i * dx;
+                        if (isOutOfRange(x, y) && board[y][x] == stone) {
+                            count++;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (count == 5) return true;
                 }
-                if (count == 5) return true;
             }
         }
-    } // (for const auto& [y, x] : SpiralMoves)
-
+    }
     return false;
 }
 
 // 石の並びを評価する関数
 int evaluateLine(const vector<int>& line) {
     int score = 0;
+
+
 
     return score;
 }
@@ -260,7 +254,23 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
 
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
+            if (board[row][col] != STONE_SPACE) {
+                // 8方向の探索
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    vector<int> line;
+                    for (int i = -1; i < 5; i++) {
+                        int y = row + i * dy;
+                        int x = col + i * dx;
+                        if (isOutOfRange(x, y)) {
+                            line.emplace_back(board[y][x]);
+                        } else {
+                            break;
+                        }
+                    }
 
+                    totalScore += evaluateLine(line);
+                }
+            }
         }
     }
 
@@ -429,8 +439,8 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
         }
     }
 
-    // メイン処理
-    pair<int, int> bestMove = findBestMove(board);
+    // 配置処理
+    pair<int, int> bestMove = findBestMoveSample(board);
     cout << "おいた場所は( " << bestMove.first << "," << bestMove.second << " )" << endl;
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
