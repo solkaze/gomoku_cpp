@@ -1,91 +1,8 @@
 #include <bits/stdc++.h>
 
-using namespace std;
-
 #include "gomoku.hpp"
 
-//* ==================================================
-//*     構造体、クラス
-//* ==================================================
-
-enum class BoundType {
-    EXACT,
-    UPPER_BOUND,
-    LOWER_BOUND
-};
-
-struct TranspositionEntry {
-    int value;              // 評価値
-    int depth;              // 探索した深さ
-    BoundType boundType;    // 何の条件で保存したか (Exact, Upper Bound, Lower Bound)
-};
-
-//* ==================================================
-//*     プロトタイプ関数宣言
-//* ==================================================
-
-// Zobristハッシュの初期化
-void initZobristTable();
-
-// ハッシュキーの更新
-void updateHashKey(int y, int x, int stone);
-
-// テーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue);
-
-// テーブル保存関数
-void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundType);
-
-// ボード評価関数
-int evaluateBoard(int board[][BOARD_SIZE]);
-
-// 一列の評価関数
-int evaluateLine(const vector<int>& line);
-
-// アルファ・ベータ法
-int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool maximizingPlayer);
-
-// 最適解探索
-pair<int, int> findBestMove(int board[][BOARD_SIZE]);
-
-// gomoku.cppに配置を返す
-int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
-
-// 満杯確認
-bool isFull(int board[][BOARD_SIZE]);
-
-// 勝利確認
-bool isWin(int board[][BOARD_SIZE], int stone);
-
-// 範囲外確認
-bool isOutOfRange(int x, int y);
-
-
-//* ==================================================
-//*     グローバル変数
-//* ==================================================
-
-// コンピュータの石
-int comStone;
-
-// プレイヤーの石
-int playerStone;
-
-// zobristハッシュ関数の定義
-array<array<uint64_t, 3>, BOARD_SIZE * BOARD_SIZE> zobristTable;
-
-// トランスポジションテーブルの定義
-unordered_map<uint64_t, TranspositionEntry> transpositionTable;
-
-// 共有ロック
-shared_mutex tableMutex;
-
-// ミューテックスの定義
-shared_mutex transTableMutex;
-
-// 参照
-thread_local uint64_t currentHashKey = 0;
-
+using namespace std;
 
 //* ==================================================
 //*     定数
@@ -121,7 +38,6 @@ constexpr int K_BOARD_SIZE = BOARD_SIZE;
 constexpr int TOTAL_CELLS = K_BOARD_SIZE * K_BOARD_SIZE;
 
 // コンパイル時に自動生成
-// これにより実行時間の効率化を図る
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     array<pair<int, int>, TOTAL_CELLS> moves{};
     int cx = K_BOARD_SIZE / 2, cy = K_BOARD_SIZE / 2;
@@ -147,8 +63,91 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
 }
 
 // グローバル変数として初期化
-// これもコンパイル時に自動生成
 constexpr auto SpiralMoves = generateSpiralMoves();
+
+
+//* ==================================================
+//*     構造体, クラス, 列挙
+//* ==================================================
+
+enum class BoundType {
+    EXACT,
+    UPPER_BOUND,
+    LOWER_BOUND
+};
+
+struct TranspositionEntry {
+    int value;              // 評価値
+    int depth;              // 探索した深さ
+    BoundType boundType;    // 何の条件で保存したか (Exact, Upper Bound, Lower Bound)
+};
+
+
+//* ==================================================
+//*     グローバル変数
+//* ==================================================
+
+// コンピュータの石
+int comStone;
+
+// プレイヤーの石
+int playerStone;
+
+// zobristハッシュ関数の定義
+array<array<uint64_t, 3>, BOARD_SIZE * BOARD_SIZE> zobristTable;
+
+// トランスポジションテーブルの定義
+unordered_map<uint64_t, TranspositionEntry> transpositionTable;
+
+// 共有ロック
+shared_mutex tableMutex;
+
+// ミューテックスの定義
+shared_mutex transTableMutex;
+
+// 参照
+thread_local uint64_t currentHashKey = 0;
+
+
+//* ==================================================
+//*     プロトタイプ関数宣言
+//* ==================================================
+
+// Zobristハッシュの初期化
+void initZobristTable();
+
+// ハッシュキーの更新
+void updateHashKey(int y, int x, int stone);
+
+// テーブル参照関数
+bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue);
+
+// テーブル保存関数
+void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundType);
+
+// ボード評価関数
+int evaluateBoard(int board[][BOARD_SIZE]);
+
+// 一列の評価関数
+int evaluateLine(const vector<pair<int, int>>& line);
+
+// アルファ・ベータ法
+int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool maximizingPlayer);
+
+// 最適解探索
+pair<int, int> findBestMove(int board[][BOARD_SIZE]);
+
+// gomoku.cppに配置を返す
+int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
+
+// 満杯確認
+bool isFull(int board[][BOARD_SIZE]);
+
+// 勝利確認
+bool isWin(int board[][BOARD_SIZE], int stone);
+
+// 範囲外確認
+bool isOutOfRange(int x, int y);
 
 
 //* ==================================================
@@ -239,11 +238,12 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
 }
 
 // 石の並びを評価する関数
-int evaluateLine(const vector<int>& line) {
+int evaluateLine(const vector<pair<int, int>>& line) {
     int score = 0;
+    int length = line.size();
 
-    for (int i = 0; i < line.size(); i++) {
-    }
+    // for (int i = 0; i < length; i++) {
+    // }
 
     return score;
 }
@@ -255,23 +255,33 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
 
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
-            if (board[row][col] != STONE_SPACE) {
 
-                // 禁じ手用bool
-                bool prohibited_three = false;
-                bool prohibited_four = false;
-                bool prohibited_long = false;
+            if (board[row][col] != STONE_SPACE) {
 
                 // 4方向の探索
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    vector<int> line;
-                    for (int i = -1; i < 4; i++) {
+                    vector<pair<int, int>> line;
+
+                    for (int i = -4; i < 5; i++) {
                         int y = row + i * dy;
                         int x = col + i * dx;
-                        if (isOutOfRange(x, y)) {
-                            line.emplace_back(board[y][x]);
+                        if (line.empty()) { // 配列が空かどうか
+                            if (isOutOfRange(x, y)) {
+                                line.push_back({1, board[y][x]});
+                            } else {
+                                line.push_back({0, STONE_OUT});
+                            }
                         } else {
-                            break;
+                            if (!isOutOfRange(x, y)) {
+                                line.push_back({0, STONE_OUT});
+                                continue;
+                            }
+
+                            if (line.back().second == board[y][x]) {
+                                line.back().first++;
+                            } else {
+                                line.push_back({1, board[y][x]});
+                            }
                         }
                     }
 
@@ -302,8 +312,13 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
     //     return eval;
     // }
 
+    // 勝利判定の確認
+    if (isWin(board, stone)) {
+        return isMaximizingPlayer ? INF : -INF;
+    }
+
     // 探索の末端のとき
-    if (depth == MAX_DEPTH || isFull(board) || isWin(board, stone)) {
+    if (depth == MAX_DEPTH || isFull(board)) {
         eval = evaluateBoard(board);
         storeTransposition(currentHashKey, depth, eval, BoundType::EXACT);
         return eval;

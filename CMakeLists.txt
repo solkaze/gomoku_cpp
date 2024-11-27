@@ -24,7 +24,7 @@ target_include_directories(gomoku PUBLIC include)
 
 add_definitions(-DDATA_PATH="${CMAKE_SOURCE_DIR}/data/")
 
-target_compile_options(gomoku PRIVATE -Wall -Wextra -g3 -O2)
+target_compile_options(gomoku PRIVATE -Wall -Wextra -g3 -O3)
 
 # インクルードディレクトリを指定
 target_include_directories(gomoku PRIVATE ${Curses_INCLUDE_DIRS} include)
