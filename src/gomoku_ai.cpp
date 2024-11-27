@@ -29,7 +29,7 @@ constexpr array<array<int, 2>, 4> DIRECTIONS = {{
 }};
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 3;
+constexpr int MAX_DEPTH = 4;
 
 // コンパイル時初期化のための定数 15マス
 constexpr int K_BOARD_SIZE = BOARD_SIZE;
@@ -274,10 +274,7 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
                         } else {
                             if (!isOutOfRange(x, y)) {
                                 line.push_back({0, STONE_OUT});
-                                continue;
-                            }
-
-                            if (line.back().second == board[y][x]) {
+                            }else if (line.back().second == board[y][x]) {
                                 line.back().first++;
                             } else {
                                 line.push_back({1, board[y][x]});
@@ -285,11 +282,13 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
                         }
                     }
 
+                    for (const auto& [length, stone] : line) {
+                        cout << "(" << length << ", " << stone << ") ";
+                    }
+                    cout << endl;
+                    this_thread::sleep_for(chrono::milliseconds(25));
                     totalScore += evaluateLine(line);
                 }
-
-                // 禁じ手処理
-
             }
         }
     }
