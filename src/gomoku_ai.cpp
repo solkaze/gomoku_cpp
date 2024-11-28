@@ -29,7 +29,7 @@ constexpr array<array<int, 2>, 4> DIRECTIONS = {{
 }};
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 4;
+constexpr int MAX_DEPTH = 3;
 
 // コンパイル時初期化のための定数 15マス
 constexpr int K_BOARD_SIZE = BOARD_SIZE;
@@ -63,7 +63,7 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
 }
 
 // グローバル変数として初期化
-constexpr auto SpiralMoves = generateSpiralMoves();
+constexpr auto SPIRAL_MOVES = generateSpiralMoves();
 
 
 //* ==================================================
@@ -88,25 +88,30 @@ struct TranspositionEntry {
 //* ==================================================
 
 // コンピュータの石
-int comStone;
+int ComStone;
 
 // プレイヤーの石
-int playerStone;
+int PlayerStone;
+
+// 禁じ手
+bool gProhibitedThreeThree = false;
+bool gProhibitedFourFour = false;
+bool gProhibitedLongLen = false;
 
 // zobristハッシュ関数の定義
-array<array<uint64_t, 3>, BOARD_SIZE * BOARD_SIZE> zobristTable;
+array<array<uint64_t, 3>, TOTAL_CELLS> ZobristTable;
 
 // トランスポジションテーブルの定義
-unordered_map<uint64_t, TranspositionEntry> transpositionTable;
+unordered_map<uint64_t, TranspositionEntry> TranspositionTable;
 
 // 共有ロック
-shared_mutex tableMutex;
+shared_mutex TableMutex;
 
 // ミューテックスの定義
-shared_mutex transTableMutex;
+shared_mutex TransTableMutex;
 
 // 参照
-thread_local uint64_t currentHashKey = 0;
+thread_local uint64_t CurrentHashKey = 0;
 
 
 //* ==================================================
@@ -127,6 +132,9 @@ void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundT
 
 // ボード評価関数
 int evaluateBoard(int board[][BOARD_SIZE]);
+
+// 周辺の評価
+int evaluateStoneRange(int board[][BOARD_SIZE], const int row, const int col);
 
 // 一列の評価関数
 int evaluateLine(const vector<pair<int, int>>& line);
@@ -158,17 +166,17 @@ bool isOutOfRange(int x, int y);
 void initZobristTable() {
     mt19937_64 rng(random_device{}());
     for (int i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
-        zobristTable[i][0] = rng();
-        zobristTable[i][1] = rng();
-        zobristTable[i][2] = rng();
+        ZobristTable[i][0] = rng();
+        ZobristTable[i][1] = rng();
+        ZobristTable[i][2] = rng();
     }
 }
 
 // トランスポジションテーブルを参照する関数（ロックを追加）
 bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue) {
-    shared_lock lock(tableMutex); // 読み込み時は共有ロック
-    auto it = transpositionTable.find(hashKey);
-    if (it != transpositionTable.end()) {
+    shared_lock lock(TableMutex); // 読み込み時は共有ロック
+    auto it = TranspositionTable.find(hashKey);
+    if (it != TranspositionTable.end()) {
         const TranspositionEntry& entry = it->second;
         if (entry.depth >= depth) {
             if (entry.boundType == BoundType::EXACT) {
@@ -188,13 +196,13 @@ bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, i
 
 // トランスポジションテーブルに結果を保存する関数（ロックを追加）
 void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundType) {
-    unique_lock lock(tableMutex); // 書き込み時は排他ロック
-    transpositionTable[hashKey] = {depth, value, boundType};
+    unique_lock lock(TableMutex); // 書き込み時は排他ロック
+    TranspositionTable[hashKey] = {depth, value, boundType};
 }
 
 // ハッシュキーの更新
 void updateHashKey(int y, int x, int stone) {
-    currentHashKey ^= zobristTable[y * BOARD_SIZE + x][stone];
+    CurrentHashKey ^= ZobristTable[y * BOARD_SIZE + x][stone];
 }
 
 // 範囲外確認
@@ -238,12 +246,60 @@ bool isWin(int board[][BOARD_SIZE], int stone) {
 }
 
 // 石の並びを評価する関数
+// pair<個数, 石の色>
 int evaluateLine(const vector<pair<int, int>>& line) {
     int score = 0;
-    int length = line.size();
+    // int length = line.size();
 
-    // for (int i = 0; i < length; i++) {
-    // }
+    for (const auto& [len, stone] : line) {
+        if (stone == STONE_OUT) continue;
+    }
+
+    return score;
+}
+
+// 石の周辺を評価
+int evaluateStoneRange(int board[][BOARD_SIZE], const int row, const int col) {
+    int score = 0;
+    // 4方向の探索
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        vector<pair<int, int>> line;
+
+        for (int i = -4; i < 5; i++) {
+            int y = row + i * dy;
+            int x = col + i * dx;
+
+            if (line.empty()) { // 配列が空かどうか
+                if (isOutOfRange(x, y)) line.push_back({1, board[y][x]});
+                else                    line.push_back({0, STONE_OUT});
+
+            } else {
+                if (!isOutOfRange(x, y))                    line.push_back({0, STONE_OUT});
+                else if (line.back().second == board[y][x]) line.back().first++;
+                else                                        line.push_back({1, board[y][x]});
+                
+            }
+
+            // デバッグ用出力
+            // if (board[y][x] == STONE_SPACE) {
+            //     cout << "空 ";
+            // } else if (board[y][x] == STONE_BLACK) {
+            //     cout << "黒 ";
+            // } else if (board[y][x] == STONE_WHITE) {
+            //     cout << "白 ";
+            // }
+            // if (i == 4) cout << endl;
+        }
+
+        // デバッグ用
+        // for (const auto& [length, stone] : line) {
+        //     cout << "(" << length << ", " << stone << ") ";
+        // }
+        // cout << endl;
+        // this_thread::sleep_for(chrono::milliseconds(25));
+
+        score += evaluateLine(line);
+    }
 
     return score;
 }
@@ -256,40 +312,7 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
 
-            if (board[row][col] != STONE_SPACE) {
-
-                // 4方向の探索
-                for (const auto& [dy, dx] : DIRECTIONS) {
-                    vector<pair<int, int>> line;
-
-                    for (int i = -4; i < 5; i++) {
-                        int y = row + i * dy;
-                        int x = col + i * dx;
-                        if (line.empty()) { // 配列が空かどうか
-                            if (isOutOfRange(x, y)) {
-                                line.push_back({1, board[y][x]});
-                            } else {
-                                line.push_back({0, STONE_OUT});
-                            }
-                        } else {
-                            if (!isOutOfRange(x, y)) {
-                                line.push_back({0, STONE_OUT});
-                            }else if (line.back().second == board[y][x]) {
-                                line.back().first++;
-                            } else {
-                                line.push_back({1, board[y][x]});
-                            }
-                        }
-                    }
-
-                    for (const auto& [length, stone] : line) {
-                        cout << "(" << length << ", " << stone << ") ";
-                    }
-                    cout << endl;
-                    this_thread::sleep_for(chrono::milliseconds(25));
-                    totalScore += evaluateLine(line);
-                }
-            }
+            if (board[row][col] != STONE_SPACE) totalScore = evaluateStoneRange(board, row, col);
         }
     }
 
@@ -298,16 +321,16 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
 
 // アルファ・ベータ法
 int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMaximizingPlayer) {
-    int stone = isMaximizingPlayer ? comStone : playerStone;
+    int stone = isMaximizingPlayer ? ComStone : PlayerStone;
     int eval;
 
     //boardPrint(board);
     // 一秒待機
-    // cout << "hashkey: " << currentHashKey << endl;
+    // cout << "hashkey: " << CurrentHashKey << endl;
     // this_thread::sleep_for(chrono::milliseconds(25));
 
     // トランスポーテーションテーブルの確認
-    // if (probeTranspositionTable(currentHashKey, depth, alpha, beta, eval)) {
+    // if (probeTranspositionTable(CurrentHashKey, depth, alpha, beta, eval)) {
     //     return eval;
     // }
 
@@ -319,21 +342,21 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
     // 探索の末端のとき
     if (depth == MAX_DEPTH || isFull(board)) {
         eval = evaluateBoard(board);
-        storeTransposition(currentHashKey, depth, eval, BoundType::EXACT);
+        storeTransposition(CurrentHashKey, depth, eval, BoundType::EXACT);
         return eval;
     }
 
     // アルファ・ベータ法の本編
     if (isMaximizingPlayer) {
         int maxEval = -INF;
-        for (const auto& [y, x] : SpiralMoves) {
+        for (const auto& [y, x] : SPIRAL_MOVES) {
             if (board[y][x] == STONE_SPACE) {
-                board[y][x] = comStone;
-                updateHashKey(y, x, comStone);
+                board[y][x] = ComStone;
+                updateHashKey(y, x, ComStone);
 
                 int eval = alphaBeta(board, depth + 1, alpha, beta, false);
                 board[y][x] = STONE_SPACE;
-                updateHashKey(y, x, comStone);
+                updateHashKey(y, x, ComStone);
 
                 maxEval = max(maxEval, eval);
                 alpha = max(alpha, eval);
@@ -341,18 +364,18 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
             }
         }
         //BoundType boundType = (maxEval <= alpha) ? BoundType::UPPER_BOUND : ((maxEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        //storeTransposition(currentHashKey, depth, maxEval, boundType);
+        //storeTransposition(CurrentHashKey, depth, maxEval, boundType);
         return maxEval;
     } else {
         int minEval = INF;
-        for (const auto& [y, x] : SpiralMoves) {
+        for (const auto& [y, x] : SPIRAL_MOVES) {
             if (board[y][x] == STONE_SPACE) {
-                board[y][x] = playerStone;
-                updateHashKey(y, x, playerStone);
+                board[y][x] = PlayerStone;
+                updateHashKey(y, x, PlayerStone);
 
                 int eval = alphaBeta(board, depth + 1, alpha, beta, true);
                 board[y][x] = STONE_SPACE;
-                updateHashKey(y, x, playerStone);
+                updateHashKey(y, x, PlayerStone);
 
                 minEval = min(minEval, eval);
                 beta = min(beta, eval);
@@ -360,7 +383,7 @@ int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMa
             }
         }
         //BoundType boundType = (minEval <= alpha) ? BoundType::UPPER_BOUND : ((minEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        //storeTransposition(currentHashKey, depth, minEval, boundType);
+        //storeTransposition(CurrentHashKey, depth, minEval, boundType);
         return minEval;
     }
 }
@@ -376,7 +399,7 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
     const int max_threads = 8;
 
     // 各手を分割して並行処理
-    for (const auto& [y, x] : SpiralMoves) {
+    for (const auto& [y, x] : SPIRAL_MOVES) {
         if (board[y][x] == STONE_SPACE) {
             // スレッドの上限を維持
             if (futures.size() >= max_threads) {
@@ -397,7 +420,7 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
                 int localBoard[BOARD_SIZE][BOARD_SIZE];
                 copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
 
-                localBoard[y][x] = comStone;
+                localBoard[y][x] = ComStone;
                 int moveVal = alphaBeta(localBoard, 0, bestVal, INF, false);
                 localBoard[y][x] = STONE_SPACE;
 
@@ -428,12 +451,12 @@ pair<int, int> findBestMoveSample(int board[][BOARD_SIZE]) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
 
-    for (const auto& [y, x] : SpiralMoves) {
+    for (const auto& [y, x] : SPIRAL_MOVES) {
         if (board[y][x] == STONE_SPACE) {
             int localBoard[BOARD_SIZE][BOARD_SIZE];
             copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
 
-            localBoard[y][x] = comStone;
+            localBoard[y][x] = ComStone;
             int moveVal = alphaBeta(localBoard, 0, bestVal, INF, false);
             localBoard[y][x] = STONE_SPACE;
 
@@ -453,10 +476,10 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     // 序盤処理の設定
     if (isFirst) {
         isFirst = false;
-        comStone = com;
-        playerStone = comStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
+        ComStone = com;
+        PlayerStone = ComStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
 
-        if (comStone == STONE_BLACK) {
+        if (ComStone == STONE_BLACK) {
             *pos_y = BOARD_SIZE / 2;
             *pos_x = BOARD_SIZE / 2;
             return 0;
