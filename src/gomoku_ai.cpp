@@ -132,8 +132,8 @@ thread_local int BoardScore = 0;
 thread_local uint64_t CurrentHashKey = 0;
 
 // ビットボード（黒と白用）
-array<uint64_t, 4> blackBitboard{};
-array<uint64_t, 4> whiteBitboard{};
+array<uint64_t, 4> ComputerBitboard{};
+array<uint64_t, 4> OpponentBitboard{};
 
 
 //* ==================================================
@@ -372,7 +372,7 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
 }
 
 // アルファ・ベータ法
-int alphaBeta(array<uint64_t, 4>& black, array<uint64_t, 4>& white, int depth, int alpha, int beta, bool isMaximizingPlayer) {
+int alphaBeta(array<uint64_t, 4>& computer, array<uint64_t, 4>& opponent, int depth, int alpha, int beta, bool isMaximizingPlayer) {
     int stone = isMaximizingPlayer ? ComStone : PlayerStone;
     int eval;
 
@@ -401,14 +401,14 @@ int alphaBeta(array<uint64_t, 4>& black, array<uint64_t, 4>& white, int depth, i
         int maxEval = -INF;
 
         for (const auto& [y, x] : SPIRAL_MOVES) {
-            if (board[y][x] == STONE_SPACE) {
-                board[y][x] = ComStone;
+            if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
+                setBit(computer, y, x);
                 updateHashKey(y, x, ComStone);
                 History.push_back({{y, x}, ComStone});
 
-                int eval = alphaBeta(board, depth + 1, alpha, beta, false);
+                int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, false);
 
-                board[y][x] = STONE_SPACE;
+                clearBit(computer, y, x);
                 updateHashKey(y, x, ComStone);
                 maxEval = max(maxEval, eval);
                 alpha = max(alpha, eval);
@@ -422,13 +422,14 @@ int alphaBeta(array<uint64_t, 4>& black, array<uint64_t, 4>& white, int depth, i
         int minEval = INF;
 
         for (const auto& [y, x] : SPIRAL_MOVES) {
-            if (board[y][x] == STONE_SPACE) {
-                board[y][x] = PlayerStone;
+            if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
+                setBit(opponent, y, x);
                 updateHashKey(y, x, PlayerStone);
+                History.push_back({{y, x}, PlayerStone});
 
-                int eval = alphaBeta(board, depth + 1, alpha, beta, true);
+                int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, true);
 
-                board[y][x] = STONE_SPACE;
+                clearBit(opponent, y, x);
                 updateHashKey(y, x, PlayerStone);
                 minEval = min(minEval, eval);
                 beta = min(beta, eval);
@@ -451,7 +452,7 @@ pair<int, int> findBestMove() {
 
     // 各手を分割して並行処理
     for (const auto& [y, x] : SPIRAL_MOVES) {
-        if (!checkBit(blackBitboard, y, x) && !checkBit(whiteBitboard, y, x)) { // 空白確認
+        if (!checkBit(ComputerBitboard, y, x) && !checkBit(OpponentBitboard, y, x)) { // 空白確認
             // スレッドの上限を維持
             if (futures.size() >= MAX_THREADS) {
                 for (auto& fut : futures) {
@@ -467,14 +468,14 @@ pair<int, int> findBestMove() {
 
             // 新しいスレッドで評価を非同期実行
             futures.emplace_back(async(launch::async, [=, &threadCount]() {
-                array<uint64_t, 4> localBlack = blackBitboard;
-                array<uint64_t, 4> localWhite = whiteBitboard;
+                array<uint64_t, 4> localBlack = ComputerBitboard;
+                array<uint64_t, 4> localWhite = OpponentBitboard;
 
                 // ビットボードに現在の手を設定
                 setBit(localBlack, y, x);
 
                 // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localBlack, localWhite, 4, bestVal, INF, false);
+                int moveVal = alphaBeta(localBlack, localWhite, 0, bestVal, INF, false);
 
                 // スレッド数をカウント
                 threadCount++;
