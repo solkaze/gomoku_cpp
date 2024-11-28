@@ -20,7 +20,7 @@ void boardInit(int board[][BOARD_SIZE]);
 void boardPrint(int board[][BOARD_SIZE]);
 int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Board[][BOARD_SIZE]);
 
-int check = 4;  // 1:三三のみ 2:四四のみ 4:長連のみ 3:三三と四四 5:三三と長連
+int check = 3;  // 1:三三のみ 2:四四のみ 4:長連のみ 3:三三と四四 5:三三と長連
                 // 6:四四と長連 7:全部
 
 //=======================================================
