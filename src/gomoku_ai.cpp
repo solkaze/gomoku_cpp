@@ -103,7 +103,7 @@ struct TranspositionEntry {
 int ComStone;
 
 // プレイヤーの石
-int PlayerStone;
+int OpponentStone;
 
 // 禁じ手
 bool gProhibitedThreeThree = false;
@@ -162,16 +162,16 @@ int evaluateStoneRange(int board[][BOARD_SIZE], const int row, const int col);
 int evaluateLine(const vector<pair<int, int>>& line);
 
 // アルファ・ベータ法
-int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool maximizingPlayer);
+int alphaBeta(array<uint64_t, 4>& computer, array<uint64_t, 4>& opponent, int depth, int alpha, int beta, bool isMaximizingPlayer);
 
 // 最適解探索
-pair<int, int> findBestMove(int board[][BOARD_SIZE]);
+pair<int, int> findBestMove();
 
 // gomoku.cppに配置を返す
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 
 // 満杯確認
-bool isFull(int board[][BOARD_SIZE]);
+bool isBoardFull(const array<uint64_t, 4>& computerBitboard, const array<uint64_t, 4>& opponentBitboard);
 
 // 勝利確認
 GameSet isWin(int board[][BOARD_SIZE], int stone);
@@ -179,6 +179,14 @@ GameSet isWin(int board[][BOARD_SIZE], int stone);
 // 範囲外確認
 bool isOutOfRange(int x, int y);
 
+// ビットを1に変換
+inline void setBit(array<uint64_t, 4>& bitboard, int y, int x);
+
+// ビットを0に変換
+inline void clearBit(array<uint64_t, 4>& bitboard, int y, int x);
+
+// 対象位置のビット確認
+inline bool checkBit(const array<uint64_t, 4>& bitboard, int y, int x);
 
 //* ==================================================
 //*     関数実装
@@ -235,13 +243,27 @@ bool isOutOfRange(int x, int y) {
 }
 
 // 満杯確認
-bool isFull(int board[][BOARD_SIZE]) {
-    for (int i = 0; i < BOARD_SIZE; ++i) {
-        for (int j = 0; j < BOARD_SIZE; ++j) {
-            if (board[i][j] == STONE_SPACE) return false;
+bool isBoardFull(const array<uint64_t, 4>& computerBitboard, const array<uint64_t, 4>& opponentBitboard) {
+    array<uint64_t, 4> combined;
+    for (int i = 0; i < 4; i++) {
+        combined[i] = computerBitboard[i] | opponentBitboard[i];  // 黒と白のビットボードを OR 演算
+    }
+
+    // 全ビットが埋まっている（= 全てのビットが 1）場合
+    for (int i = 0; i < 3; i++) {
+        if (combined[i] != ~0ULL) {  // 64ビットが全て1ではない
+            return false;
         }
     }
-    return true;
+
+    // 最後のビットボードの残り部分を確認（225ビット目以降は無視）
+    int remainingBits = 225 - 64 * 3;
+    uint64_t mask = (1ULL << remainingBits) - 1;  // 下位 "remainingBits" ビットのみを 1 にするマスク
+    if ((combined[3] & mask) != mask) {
+        return false;
+    }
+
+    return true;  // 全てのビットが埋まっている
 }
 
 // 勝利確認
@@ -285,6 +307,26 @@ inline void clearBit(array<uint64_t, 4>& bitboard, int y, int x) {
 inline bool checkBit(const array<uint64_t, 4>& bitboard, int y, int x) {
     int pos = y * BOARD_SIZE + x;
     return bitboard[pos / 64] & (1ULL << (pos % 64));
+}
+
+void convertToBitboards(int board[][BOARD_SIZE]) {
+    // 初期化
+    ComputerBitboard.fill(0);
+    OpponentBitboard.fill(0);
+
+    for (int y = 0; y < BOARD_SIZE; ++y) {
+        for (int x = 0; x < BOARD_SIZE; ++x) {
+            int pos = y * BOARD_SIZE + x; // 総ビット位置
+            int part = pos / 64;          // どのuint64_tに対応するか
+            int offset = pos % 64;        // そのuint64_t内のビット位置
+
+            if (board[y][x] == ComStone) { // 黒石
+                ComputerBitboard[part] |= (1ULL << offset);
+            } else if (board[y][x] == OpponentStone) { // 白石
+                OpponentBitboard[part] |= (1ULL << offset);
+            }
+        }
+    }
 }
 
 // 石の並びを評価する関数
@@ -373,7 +415,7 @@ int evaluateBoard(int board[][BOARD_SIZE]) {
 
 // アルファ・ベータ法
 int alphaBeta(array<uint64_t, 4>& computer, array<uint64_t, 4>& opponent, int depth, int alpha, int beta, bool isMaximizingPlayer) {
-    int stone = isMaximizingPlayer ? ComStone : PlayerStone;
+    int stone = isMaximizingPlayer ? ComStone : OpponentStone;
     int eval;
 
     //boardPrint(board);
@@ -424,13 +466,13 @@ int alphaBeta(array<uint64_t, 4>& computer, array<uint64_t, 4>& opponent, int de
         for (const auto& [y, x] : SPIRAL_MOVES) {
             if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
                 setBit(opponent, y, x);
-                updateHashKey(y, x, PlayerStone);
-                History.push_back({{y, x}, PlayerStone});
+                updateHashKey(y, x, OpponentStone);
+                History.push_back({{y, x}, OpponentStone});
 
                 int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, true);
 
                 clearBit(opponent, y, x);
-                updateHashKey(y, x, PlayerStone);
+                updateHashKey(y, x, OpponentStone);
                 minEval = min(minEval, eval);
                 beta = min(beta, eval);
                 if (beta <= alpha) break; // Alpha cut-off
@@ -468,14 +510,14 @@ pair<int, int> findBestMove() {
 
             // 新しいスレッドで評価を非同期実行
             futures.emplace_back(async(launch::async, [=, &threadCount]() {
-                array<uint64_t, 4> localBlack = ComputerBitboard;
-                array<uint64_t, 4> localWhite = OpponentBitboard;
+                array<uint64_t, 4> localCom = ComputerBitboard;
+                array<uint64_t, 4> localOpp = OpponentBitboard;
 
                 // ビットボードに現在の手を設定
-                setBit(localBlack, y, x);
+                setBit(localCom, y, x);
 
                 // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localBlack, localWhite, 0, bestVal, INF, false);
+                int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
 
                 // スレッド数をカウント
                 threadCount++;
@@ -500,18 +542,18 @@ pair<int, int> findBestMove() {
 }
 
 // 最適解探索スレッドなし
-pair<int, int> findBestMoveSample(int board[][BOARD_SIZE]) {
+pair<int, int> findBestMoveSample() {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
 
     for (const auto& [y, x] : SPIRAL_MOVES) {
-        if (board[y][x] == STONE_SPACE) {
-            int localBoard[BOARD_SIZE][BOARD_SIZE];
-            copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
+        if (!checkBit(ComputerBitboard, y, x) && !checkBit(OpponentBitboard, y, x)) {
+            array<uint64_t, 4> localCom = ComputerBitboard;
+            array<uint64_t, 4> localOpp = OpponentBitboard;
 
-            localBoard[y][x] = ComStone;
-            int moveVal = alphaBeta(localBoard, 0, bestVal, INF, false);
-            localBoard[y][x] = STONE_SPACE;
+            setBit(localCom, y, x);
+
+            int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
 
             if (moveVal > bestVal) {
                 bestVal = moveVal;
@@ -530,7 +572,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     if (isFirst) {
         isFirst = false;
         ComStone = com;
-        PlayerStone = ComStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
+        OpponentStone = ComStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
 
         if (ComStone == STONE_BLACK) {
             *pos_y = BOARD_SIZE / 2;
@@ -540,7 +582,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     }
 
     // 配置処理
-    pair<int, int> bestMove = findBestMoveSample(board);
+    pair<int, int> bestMove = findBestMoveSample();
     cout << "おいた場所は( " << bestMove.first << "," << bestMove.second << " )" << endl;
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
