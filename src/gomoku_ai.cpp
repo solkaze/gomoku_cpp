@@ -20,6 +20,11 @@ constexpr int SCORE_CLOSED_THREE  = 500;
 constexpr int SCORE_OPEN_TWO      = 100;
 constexpr int SCORE_CLOSED_TWO    = 50;
 
+// 禁じ手
+constexpr bool gProhibitedThreeThree  = true;
+constexpr bool gProhibitedFourFour    = true;
+constexpr bool gProhibitedLongLens    = false;
+
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
     {0,  1},
@@ -117,11 +122,6 @@ int ComStone;
 
 // 対戦相手の石
 int OppStone;
-
-// 禁じ手
-constexpr bool gProhibitedThreeThree  = true;
-constexpr bool gProhibitedFourFour    = true;
-constexpr bool gProhibitedLongLens    = false;
 
 // zobristハッシュ関数の定義
 array<array<uint64_t, 3>, TOTAL_CELLS> ZobristTable;
