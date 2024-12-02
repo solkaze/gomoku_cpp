@@ -119,9 +119,9 @@ int ComStone;
 int OppStone;
 
 // 禁じ手
-bool gProhibitedThreeThree = false;
-bool gProhibitedFourFour = false;
-bool gProhibitedLongLens = false;
+constexpr bool gProhibitedThreeThree  = true;
+constexpr bool gProhibitedFourFour    = true;
+constexpr bool gProhibitedLongLens    = false;
 
 // zobristハッシュ関数の定義
 array<array<uint64_t, 3>, TOTAL_CELLS> ZobristTable;
@@ -490,7 +490,6 @@ int evaluateBoard(const array<uint64_t, 4>& comBitboard, const array<uint64_t, 4
 // アルファ・ベータ法
 int alphaBeta(array<uint64_t, 4>& computer, array<uint64_t, 4>& opponent,
                 int depth, int alpha, int beta, bool isMaximizingPlayer) {
-    int stone = isMaximizingPlayer ? ComStone : OppStone;
     int eval;
 
     //boardPrint(board);
@@ -506,10 +505,14 @@ int alphaBeta(array<uint64_t, 4>& computer, array<uint64_t, 4>& opponent,
     // 勝利判定の確認
     switch(isWin(computer, opponent, History)) {
         case GameSet::WIN:
-            return INF;
-        case GameSet::LOSE:
+            if (depth == 0) return INF;
+            return SCORE_FIVE;
         case GameSet::PROHIBITED:
-            return -INF + 1;
+            if (depth == 0) return ComStone == STONE_BLACK ? INF - 1 : -INF + 1;
+            return ComStone == STONE_BLACK ? -SCORE_FIVE : SCORE_FIVE;
+        case GameSet::LOSE:
+            if (depth == 0) return -INF + 1;
+            return -SCORE_FIVE;
         case GameSet::CONTINUE:
             break;
     }
@@ -676,8 +679,6 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
         if (ComStone == STONE_BLACK) {
             *pos_y = BOARD_SIZE / 2;
             *pos_x = BOARD_SIZE / 2;
-            gProhibitedThreeThree = false;
-            gProhibitedFourFour = false;
             return 0;
         }
     }
