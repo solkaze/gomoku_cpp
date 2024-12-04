@@ -48,7 +48,7 @@ constexpr array<array<int, 2>, 4> DIRECTIONS = {{
 }};
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 3;
+constexpr int MAX_DEPTH = 4;
 
 // スレッドの最大数
 constexpr int MAX_THREADS = 8;
@@ -68,8 +68,8 @@ const int SEGMENT_SIZE = 64;
 // コンパイル時に自動生成
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     array<pair<int, int>, TOTAL_CELLS> moves{};
-    int cx = K_BOARD_SIZE / 2, cy = K_BOARD_SIZE / 2;
-    moves[0] = {cx, cy};
+    int cy = K_BOARD_SIZE / 2, cx = K_BOARD_SIZE / 2;
+    moves[0] = {cy, cx};
 
     const int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
     int steps = 1;
@@ -78,10 +78,10 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     while (index < TOTAL_CELLS) {
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < steps && index < TOTAL_CELLS; ++j) {
-                cx += directions[i][0];
-                cy += directions[i][1];
-                if (cx >= 0 && cx < K_BOARD_SIZE && cy >= 0 && cy < K_BOARD_SIZE) {
-                    moves[index++] = {cx, cy};
+                cy += directions[i][0];
+                cx += directions[i][1];
+                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 && cx < K_BOARD_SIZE) {
+                    moves[index++] = {cy, cx};
                 }
             }
             if (i % 2 == 1) ++steps;
@@ -216,7 +216,7 @@ int evaluateBoard(const BitBoard& comBitboard, const BitBoard& oppBitboard);
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 int depth, int alpha, int beta, bool isMaximizingPlayer);
 // 最適解探索
-pair<int, int> findBestMove();
+pair<int, int> findBestMove(int pos_x, int pos_y);
 // コマ配置
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 
@@ -600,6 +600,36 @@ void convertToBitboards(int board[][BOARD_SIZE]) {
     }
 }
 
+// 4連成立確認
+bool isFourInARow(const BitBoard& bitboard, int y, int x) {
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        // 正方向
+        int count = 1;
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitboard, ny, nx)) break;
+            ++count;
+        }
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitboard, ny, nx)) break;
+            ++count;
+        }
+
+        if (count >= 4) return true;
+    }
+
+    return false;
+}
+
 // ビットボードの特定の方向でのパターン評価
 int evaluateDirection(const BitBoard& bitboard, const BitBoard& opponent, int shift) {
     int score = 0;
@@ -610,7 +640,7 @@ int evaluateDirection(const BitBoard& bitboard, const BitBoard& opponent, int sh
     }
 
     BitBoard pattern = bitboard & shifted; // 連続する石の検出
-    BitBoard empty = ~(bitboard | opponent); // 空きマスを計算                                                         
+    BitBoard empty = ~(bitboard | opponent); // 空きマスを計算
 
     // 両端空きの4連のチェック
     for (int i = 0; i < 4; ++i) {
@@ -621,7 +651,23 @@ int evaluateDirection(const BitBoard& bitboard, const BitBoard& opponent, int sh
         }
     }
 
-    // 片側空きの4連、3連などの評価も同様に追加可能
+    // 両端空きの3連のチェック
+    for (int i = 0; i < 4; ++i) {
+        if (((pattern[i] & (pattern[i] >> shift) & (pattern[i] >> (2 * shift))) != 0) &&
+            ((empty[i] & (pattern[i] >> (3 * shift))) != 0) &&
+            ((empty[i] & (pattern[i] << shift)) != 0)) {
+            score += SCORE_OPEN_THREE;
+        }
+    }
+
+    // 両端空き2連のチェック
+    for (int i = 0; i < 4; ++i) {
+        if (((pattern[i] & (pattern[i] >> shift)) != 0) &&
+            ((empty[i] & (pattern[i] >> (2 * shift))) != 0) &&
+            ((empty[i] & (pattern[i] << shift)) != 0)) {
+            score += SCORE_OPEN_TWO;
+        }
+    }
 
     return score;
 }
@@ -632,19 +678,15 @@ int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
 
     // 横方向の評価
     score += evaluateDirection(computer, opponent, 1);
-    score -= evaluateDirection(opponent, computer, 1);
 
     // 縦方向の評価
     score += evaluateDirection(computer, opponent, BOARD_SIZE);
-    score -= evaluateDirection(opponent, computer, BOARD_SIZE);
 
     // 斜め方向（右下がり）の評価
     score += evaluateDirection(computer, opponent, BOARD_SIZE + 1);
-    score -= evaluateDirection(opponent, computer, BOARD_SIZE + 1);
 
     // 斜め方向（右上がり）の評価
     score += evaluateDirection(computer, opponent, BOARD_SIZE - 1);
-    score -= evaluateDirection(opponent, computer, BOARD_SIZE - 1);
 
     return score;
 }
@@ -740,47 +782,59 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
 }
 
 // 最適解探索
-pair<int, int> findBestMove() {
+pair<int, int> findBestMove(int pos_x, int pos_y) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
     vector<future<pair<int, pair<int, int>>>> futures;
     mutex mtx; // 排他制御用
     atomic<int> threadCount(0); // 実行スレッド数
+    constexpr int CENTER = BOARD_SIZE / 2;
+    int nx = CENTER, ny = CENTER;
+
+    if (isFourInARow(OpponentBitboard, pos_y, pos_x)) {
+        nx = pos_x;
+        ny = pos_y;
+    }
 
     // 各手を分割して並行処理
     for (const auto& [y, x] : SPIRAL_MOVES) {
-        if (!checkBit(ComputerBitboard, y, x) && !checkBit(OpponentBitboard, y, x)) { // 空白確認
-            // スレッドの上限を維持
-            if (futures.size() >= MAX_THREADS) {
-                for (auto& fut : futures) {
-                    auto [moveVal, pos] = fut.get(); // 結果を取得
-                    cout << pos.first << ", " << pos.second << ": " << moveVal << endl;
-                    lock_guard<mutex> lock(mtx); // 排他制御
-                    if (moveVal > bestVal) {
-                        bestVal = moveVal;
-                        bestMove = pos;
+        const int dx = x + nx - CENTER;
+        const int dy = y + ny - CENTER;
+
+        if (!isOutOfRange(dx, dy)) {
+            if (!checkBit(ComputerBitboard, dy, dx) && !checkBit(OpponentBitboard, dy, dx)) { // 空白確認
+                // スレッドの上限を維持
+                if (futures.size() >= MAX_THREADS) {
+                    for (auto& fut : futures) {
+                        auto [moveVal, pos] = fut.get(); // 結果を取得
+                        cout << pos.first << ", " << pos.second << ": " << moveVal << endl;
+                        lock_guard<mutex> lock(mtx); // 排他制御
+                        if (moveVal > bestVal) {
+                            bestVal = moveVal;
+                            bestMove = pos;
+                        }
                     }
+                    futures.clear();
                 }
-                futures.clear();
+
+                // 新しいスレッドで評価を非同期実行
+                futures.emplace_back(async(launch::async, [=, &bestVal, &threadCount]() {
+                    BitBoard localCom = ComputerBitboard;
+                    BitBoard localOpp = OpponentBitboard;
+
+                    // ビットボードに現在の手を設定
+                    setBit(localCom, dy, dx);
+                    History.push({{dy, dx}, ComStone});
+
+                    // アルファ・ベータ探索を実行
+                    int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
+                    History.pop();
+
+                    // スレッド数をカウント
+                    threadCount++;
+                    return make_pair(moveVal, make_pair(dy, dx));
+                }));
             }
-
-            // 新しいスレッドで評価を非同期実行
-            futures.emplace_back(async(launch::async, [=, &bestVal, &threadCount]() {
-                BitBoard localCom = ComputerBitboard;
-                BitBoard localOpp = OpponentBitboard;
-
-                // ビットボードに現在の手を設定
-                setBit(localCom, y, x);
-                History.push({{y, x}, ComStone});
-
-                // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
-                History.pop();
-
-                // スレッド数をカウント
-                threadCount++;
-                return make_pair(moveVal, make_pair(y, x));
-            }));
         }
     }
 
@@ -848,7 +902,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     convertToBitboards(board);
 
     // 配置処理
-    pair<int, int> bestMove = findBestMove();
+    pair<int, int> bestMove = findBestMove(*pos_x, *pos_y);
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
     return 0;
