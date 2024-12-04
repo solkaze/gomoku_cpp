@@ -1,4 +1,18 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <numeric>
+#include <array>
+#include <unordered_map>
+#include <vector>
+#include <algorithm>
+#include <limits>
+#include <random>
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <shared_mutex>
+#include <stack>
+#include <atomic>
+#include <future>
 
 #include "gomoku.hpp"
 
@@ -21,9 +35,9 @@ constexpr int SCORE_OPEN_TWO      = 100;
 constexpr int SCORE_CLOSED_TWO    = 50;
 
 // 禁じ手
-constexpr bool gProhibitedThreeThree  = true;
-constexpr bool gProhibitedFourFour    = true;
-constexpr bool gProhibitedLongLens    = false;
+constexpr bool PROHIBITED_THREE_THREE  = true;
+constexpr bool PROHIBITED_FOUR_FOUR    = true;
+constexpr bool PROHIBITED_LONG_LONG    = false;
 
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
@@ -31,18 +45,6 @@ constexpr array<array<int, 2>, 4> DIRECTIONS = {{
     {1,  0},
     {1,  1},
     {1, -1}
-}};
-
-// すべて
-constexpr array<array<int, 2>, 8> DIRECTIONS_ALL = {{
-    { 0,  1},
-    { 1,  0},
-    { 1,  1},
-    { 1, -1},
-    { 0, -1},
-    {-1,  0},
-    {-1, -1},
-    {-1,  1}
 }};
 
 // アルファ・ベータ法最大深度
@@ -59,6 +61,9 @@ constexpr int TOTAL_CELLS = K_BOARD_SIZE * K_BOARD_SIZE;
 
 // 必要なuint64_tの数
 constexpr int BITBOARD_PARTS = (TOTAL_CELLS + 63) / 64;
+
+// ビット列の最大サイズ
+const int SEGMENT_SIZE = 64;
 
 // コンパイル時に自動生成
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
@@ -177,19 +182,12 @@ GameSet isWin(BitBoard& computerBitboard,
 bool isWinDirection(int y, int x, const BitBoard& bitboard);
 
 
-// 3連判定
-bool checkThree(const BitBoard& bitboard, int y, int x, int dy, int dx);
-// 4連判定
-bool checkFour(const BitBoard& bitboard, int y, int x, int dy, int dx);
-// 長連判定
-bool checkLongLens(const BitBoard& bitboard, int y, int x, int dy, int dx);
 // 33禁判定
-bool isProhibitedThreeThree(const BitBoard& bitboard, int y, int x);
+bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone);
 // 44禁判定
-bool isProhibitedFourFour(const BitBoard& bitboard, int y, int x);
+bool isProhibitedFourFour(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone);
 // 長連禁判定
 bool isProhibitedLongLens(const BitBoard& bitboard, int y, int x);
-
 
 
 // 指定位置を1にする
@@ -200,6 +198,16 @@ inline void clearBit(BitBoard& bitboard, int y, int x);
 inline bool checkBit(const BitBoard& bitboard, int y, int x);
 // 配列をビット列に変換
 void convertToBitboards(int board[][BOARD_SIZE]);
+
+
+// AND 演算
+BitBoard operator&(const BitBoard& lhs, const BitBoard& rhs);
+// OR 演算
+BitBoard operator|(const BitBoard& lhs, const BitBoard& rhs);
+// XOR 演算
+BitBoard operator^(const BitBoard& lhs, const BitBoard& rhs);
+// NOT 演算
+BitBoard operator~(const BitBoard& bitboard);
 
 
 // ボード全体の評価
@@ -301,46 +309,143 @@ bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitbo
 
 
 // 33禁判定
-bool isProhibitedThreeThree(const BitBoard& bitboard, int y, int x) {
-    // 三連のパターンを探索するロジックを実装
-    // 三々の場合は2つ以上の三連が発生するかを確認
-    int count = 0;
+bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone) {
+    int threeCount = 0;
+    const BitBoard bitBoard = stone == ComStone ? computer : opponent;
+    const BitBoard bitMask = computer | opponent;
+
     for (const auto& [dy, dx] : DIRECTIONS) {
-        if (checkThree(bitboard, y, x, dy, dx)) {
-            count++;
+        int count = 1;
+        int openCount = 0;
+        // 正方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+
+            if (!checkBit(bitMask, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
+                }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+
+            ++count;
         }
-        if (count > 1) {
-            return true; // 三々が成立
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+
+            if (!checkBit(bitMask, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
+                }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+
+            ++count;
         }
+
+        if (count == 3) ++threeCount;
     }
+
+    if (threeCount >= 2) return true;
+
     return false;
 }
 
 // 44禁判定
-bool isProhibitedFourFour(const BitBoard& bitboard, int y, int x) {
-    // 四連のパターンを探索するロジックを実装
-    // 四々の場合は2つ以上の四連が発生するかを確認
-    int count = 0;
+bool isProhibitedFourFour(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone) {
+    int fourCount = 0;
+    const BitBoard bitBoard = stone == ComStone ? computer : opponent;
+    const BitBoard bitMask = computer | opponent;
+
     for (const auto& [dy, dx] : DIRECTIONS) {
-        if (checkFour(bitboard, y, x, dy, dx)) {
-            count++;
+        int count = 1;
+        int openCount = 0;
+
+        // 正方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+
+            if (!checkBit(bitMask, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
+                }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+
+            ++count;
         }
-        if (count > 1) {
-            return true; // 四々が成立
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+
+            if (!checkBit(bitMask, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
+                }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+
+            ++count;
         }
+
+        if (count == 4) ++fourCount;
     }
+
+    if (fourCount >= 2) return true;
+
     return false;
 }
 
 // 長連禁判定
-bool isProhibitedLongLens(const BitBoard& bitboard, int y, int x) {
-    // 長連のパターンを探索するロジックを実装
-    for (const auto& dir : DIRECTIONS) {
-        int dy = dir[0], dx = dir[1];
-        if (checkLongLens(bitboard, y, x, dy, dx)) {
-            return true; // 長連が成立
+bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        int longCount = 1;
+        // 正方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitBoard, ny, nx)) break;
+            ++longCount;
         }
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitBoard, ny, nx)) break;
+            ++longCount;
+        }
+
+        if (longCount >= 6) return true;
     }
+
     return false;
 }
 
@@ -373,17 +478,15 @@ bool isWinDirection(int y, int x, const BitBoard& bitboard) {
         }
 
         // 5つ以上連続
-        if (count >= 5) {
-            return true;
-        }
+        if (count >= 5) return true;
     }
 
     return false;
 }
 
 // 勝利判定
-GameSet isWin(BitBoard& computerBitboard,
-                BitBoard& opponentBitboard,
+GameSet isWin(BitBoard& computer,
+                BitBoard& opponent,
                     stack<pair<pair<int, int>, int>>& History) {
     // スタックが空の場合は処理をスキップ
     if (History.empty()) return GameSet::CONTINUE;
@@ -395,15 +498,24 @@ GameSet isWin(BitBoard& computerBitboard,
 
     // 禁じ手チェック（先手のみ有効）
     if (stoneType == STONE_BLACK) {
+        if (PROHIBITED_THREE_THREE && isProhibitedThreeThree(computer, opponent, y, x, stoneType)) {
+            return GameSet::PROHIBITED;
+        }
+        if (PROHIBITED_FOUR_FOUR && isProhibitedFourFour(computer, opponent, y, x, stoneType)) {
+            return GameSet::PROHIBITED;
+        }
+        if (PROHIBITED_LONG_LONG && isProhibitedLongLens(stoneType == ComStone ? computer : opponent, y, x)) {
+            return GameSet::PROHIBITED;
+        }
     }
 
     // 勝利判定を行う
     if (stoneType == ComStone) {
-        if (isWinDirection(y, x, computerBitboard)) {
+        if (isWinDirection(y, x, computer)) {
             return GameSet::WIN;
         }
     } else if (stoneType == OppStone) {
-        if (isWinDirection(y, x, opponentBitboard)) {
+        if (isWinDirection(y, x, opponent)) {
             return GameSet::LOSE;
         }
     }
@@ -431,6 +543,42 @@ inline bool checkBit(const BitBoard& bitboard, int y, int x) {
     return bitboard[pos / 64] & (1ULL << (pos % 64));
 }
 
+// AND 演算
+BitBoard operator&(const BitBoard& lhs, const BitBoard& rhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = lhs[i] & rhs[i];
+    }
+    return result;
+}
+
+// OR 演算
+BitBoard operator|(const BitBoard& lhs, const BitBoard& rhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = lhs[i] | rhs[i];
+    }
+    return result;
+}
+
+// XOR 演算
+BitBoard operator^(const BitBoard& lhs, const BitBoard& rhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = lhs[i] ^ rhs[i];
+    }
+    return result;
+}
+
+// NOT 演算
+BitBoard operator~(const BitBoard& lhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = ~lhs[i];
+    }
+    return result;
+}
+
 // 配列をビット列に変換
 void convertToBitboards(int board[][BOARD_SIZE]) {
     // 初期化
@@ -452,9 +600,51 @@ void convertToBitboards(int board[][BOARD_SIZE]) {
     }
 }
 
-// ボード全体の評価
-int evaluateBoard(const BitBoard& comBitboard, const BitBoard& oppBitboard) {
+// ビットボードの特定の方向でのパターン評価
+int evaluateDirection(const BitBoard& bitboard, const BitBoard& opponent, int shift) {
     int score = 0;
+
+    BitBoard shifted = bitboard;
+    for (int i = 0; i < 4; ++i) {
+        shifted[i] = (shifted[i] >> shift) | (i < 3 ? (bitboard[i + 1] << (SEGMENT_SIZE - shift)) : 0);
+    }
+
+    BitBoard pattern = bitboard & shifted; // 連続する石の検出
+    BitBoard empty = ~(bitboard | opponent); // 空きマスを計算                                                         
+
+    // 両端空きの4連のチェック
+    for (int i = 0; i < 4; ++i) {
+        if (((pattern[i] & (pattern[i] >> shift) & (pattern[i] >> (2 * shift)) & (pattern[i] >> (3 * shift))) != 0) &&
+            ((empty[i] & (pattern[i] >> (4 * shift))) != 0) &&
+            ((empty[i] & (pattern[i] << shift)) != 0)) {
+            score += SCORE_OPEN_FOUR;
+        }
+    }
+
+    // 片側空きの4連、3連などの評価も同様に追加可能
+
+    return score;
+}
+
+// 評価関数
+int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
+    int score = 0;
+
+    // 横方向の評価
+    score += evaluateDirection(computer, opponent, 1);
+    score -= evaluateDirection(opponent, computer, 1);
+
+    // 縦方向の評価
+    score += evaluateDirection(computer, opponent, BOARD_SIZE);
+    score -= evaluateDirection(opponent, computer, BOARD_SIZE);
+
+    // 斜め方向（右下がり）の評価
+    score += evaluateDirection(computer, opponent, BOARD_SIZE + 1);
+    score -= evaluateDirection(opponent, computer, BOARD_SIZE + 1);
+
+    // 斜め方向（右上がり）の評価
+    score += evaluateDirection(computer, opponent, BOARD_SIZE - 1);
+    score -= evaluateDirection(opponent, computer, BOARD_SIZE - 1);
 
     return score;
 }
