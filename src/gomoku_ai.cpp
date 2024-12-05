@@ -137,7 +137,7 @@ int OppStone;
 array<array<uint64_t, 2>, TOTAL_CELLS> ZobristTable;
 
 // ハッシュキー
-uint64_t CurrentHashKey = 0; // 初期状態
+thread_local uint64_t CurrentHashKey = 0; // 初期状態
 
 // トランスポジションテーブルの定義
 unordered_map<uint64_t, TranspositionEntry> TranspositionTable;
@@ -167,7 +167,7 @@ void updateHash(uint64_t& hash, int y, int x, int stone);
 // トランスポジションテーブル結果保存関数
 void storeTranspositionTable(uint64_t hashKey, int depth, int value, BoundType boundType);
 // トランスポジションテーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey,int depth, int& alpha, int& beta, int& outValue);
+bool probeTranspositionTable(uint64_t hashKey,int depth, int alpha, int beta, int& outValue);
 
 
 // 範囲外判定
@@ -246,7 +246,7 @@ void updateHash(uint64_t& hash, int y, int x, int stone) {
 }
 
 // トランスポジションテーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey,int depth, int& alpha, int& beta, int& outValue) {
+bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue) {
     shared_lock lock(TableMutex); // 読み込み時は共有ロック
     auto it = TranspositionTable.find(hashKey);
 
@@ -256,10 +256,10 @@ bool probeTranspositionTable(uint64_t hashKey,int depth, int& alpha, int& beta, 
             if (entry.boundType == BoundType::EXACT) {
                 outValue = entry.value;
                 return true;
-            }
-            if (entry.boundType == BoundType::LOWER_BOUND)  alpha = max(alpha, entry.value);
-            if (entry.boundType == BoundType::UPPER_BOUND)  beta = min(beta, entry.value);
-            if (alpha >= beta) {
+            } else if (entry.boundType == BoundType::LOWER_BOUND && entry.value >= beta) {
+                outValue = entry.value;
+                return true;
+            } else if (entry.boundType == BoundType::UPPER_BOUND && entry.value <= alpha) {
                 outValue = entry.value;
                 return true;
             }
@@ -687,7 +687,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (depth == 0) return INF;
             return SCORE_FIVE;
         case GameSet::PROHIBITED:
-            if (depth == 0) return ComStone == STONE_BLACK ? INF : -INF + 1;
+            if (depth == 0) return ComStone == STONE_BLACK ? -INF + 1 : INF;
             return ComStone == STONE_BLACK ? -SCORE_FIVE : SCORE_FIVE;
         case GameSet::LOSE:
             if (depth == 0) return -INF + 1;
@@ -697,9 +697,9 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     }
 
     // トランスポーテーションテーブル参照
-    if (probeTranspositionTable(CurrentHashKey, depth, alpha, beta, eval)) {
-        return eval;
-    }
+    // if (probeTranspositionTable(CurrentHashKey, depth, alpha, beta, eval)) {
+    //     return eval;
+    // }
 
     // 探索の末端のとき
     if (depth == MAX_DEPTH) {
@@ -730,8 +730,8 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 if (beta <= alpha) break; // Beta cut-off
             }
         }
-        storeTranspositionTable(CurrentHashKey, depth, maxEval, 
-                        (maxEval <= alpha ? BoundType::UPPER_BOUND : (maxEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
+        // storeTranspositionTable(CurrentHashKey, depth, maxEval,
+        //                 (maxEval <= alpha ? BoundType::UPPER_BOUND : (maxEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return maxEval;
     } else {
         int minEval = INF;
@@ -755,8 +755,8 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 if (beta <= alpha) break; // Alpha cut-off
             }
         }
-        storeTranspositionTable(CurrentHashKey, depth, minEval,
-                        (minEval <= alpha ? BoundType::UPPER_BOUND : (minEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
+        // storeTranspositionTable(CurrentHashKey, depth, minEval,
+        //                 (minEval <= alpha ? BoundType::UPPER_BOUND : (minEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return minEval;
     }
 }
