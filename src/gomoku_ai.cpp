@@ -704,6 +704,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     // 探索の末端のとき
     if (depth == MAX_DEPTH) {
         eval = evaluateBoard(computer, opponent);
+        // storeTranspositionTable(CurrentHashKey, depth, eval, BoundType::EXACT);
         return eval;
     }
 
