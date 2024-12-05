@@ -48,7 +48,7 @@ constexpr array<array<int, 2>, 4> DIRECTIONS = {{
 }};
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 3;
+constexpr int MAX_DEPTH = 4;
 
 // スレッドの最大数
 constexpr int MAX_THREADS = 8;
@@ -103,7 +103,13 @@ using BitBoard = array<uint64_t, BITBOARD_PARTS>;
 //*    構造体, クラス, 列挙
 //*==================================================
 
-enum GameSet {
+enum class BoundType {
+    EXACT,
+    LOWER_BOUND,
+    UPPER_BOUND
+};
+
+enum class GameSet {
     WIN,
     LOSE,
     PROHIBITED,
@@ -111,7 +117,9 @@ enum GameSet {
 };
 
 struct TranspositionEntry {
-    int value;              // 評価値
+    int value;  // 評価値
+    int depth;  // 深さ
+    BoundType boundType; // バウンドタイプ
 };
 
 
@@ -125,8 +133,11 @@ int ComStone;
 // 対戦相手の石
 int OppStone;
 
-// zobristハッシュ関数の定義
-array<array<uint64_t, 3>, TOTAL_CELLS> ZobristTable;
+// Zobristハッシュ用のテーブル
+array<array<uint64_t, 2>, TOTAL_CELLS> ZobristTable;
+
+// ハッシュキー
+uint64_t CurrentHashKey = 0; // 初期状態
 
 // トランスポジションテーブルの定義
 unordered_map<uint64_t, TranspositionEntry> TranspositionTable;
@@ -140,9 +151,6 @@ shared_mutex TransTableMutex;
 // 履歴スタック
 thread_local stack<pair<pair<int, int>, int>> History;
 
-// スレッド別ハッシュキー
-thread_local uint64_t CurrentHashKey = 0;
-
 // ビットボード（黒と白用）
 BitBoard ComputerBitboard{};
 BitBoard OpponentBitboard{};
@@ -154,12 +162,12 @@ BitBoard OpponentBitboard{};
 
 //ZobristHashMap関数
 void initZobristTable();
-// トランスポジションテーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey, int alpha, int beta, int& outValue);
-// トランスポジションテーブル結果保存関数
-void storeTransposition(uint64_t hashKey, int depth);
 // ハッシュキーの更新
-void updateHashKey(int y, int x, int stone);
+void updateHash(uint64_t& hash, int y, int x, int stone);
+// トランスポジションテーブル結果保存関数
+void storeTranspositionTable(uint64_t hashKey, int depth, int value, BoundType boundType);
+// トランスポジションテーブル参照関数
+bool probeTranspositionTable(uint64_t hashKey,int depth, int& alpha, int& beta, int& outValue);
 
 
 // 範囲外判定
@@ -212,6 +220,7 @@ pair<int, int> findBestMove(int pos_x, int pos_y);
 // コマ配置
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 
+
 //*==================================================
 //*    関数実装
 //*==================================================
@@ -219,36 +228,50 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 
 //* HashMap関数
 
-// Zobristハッシュの初期化
+// ゲーム開始時にテーブルを初期化
 void initZobristTable() {
-    mt19937_64 rng(random_device{}());
+    mt19937_64 rng(12345); // ランダム値生成器（シードは固定）
+    uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
+
     for (int i = 0; i < TOTAL_CELLS; ++i) {
-        ZobristTable[i][0] = rng();
-        ZobristTable[i][1] = rng();
-        ZobristTable[i][2] = rng();
+        ZobristTable[i][0] = dist(rng); // 自分の石用のランダム値
+        ZobristTable[i][1] = dist(rng); // 相手の石用のランダム値
     }
 }
 
+// ハッシュキーの更新
+void updateHash(uint64_t& hash, int y, int x, int stone) {
+    int index = y * BOARD_SIZE + x;
+    hash ^= ZobristTable[index][stone]; // XORで更新
+}
+
 // トランスポジションテーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey, int alpha, int beta, int& outValue) {
+bool probeTranspositionTable(uint64_t hashKey,int depth, int& alpha, int& beta, int& outValue) {
     shared_lock lock(TableMutex); // 読み込み時は共有ロック
     auto it = TranspositionTable.find(hashKey);
 
     if (it != TranspositionTable.end()) {
         const TranspositionEntry& entry = it->second;
+        if (entry.depth >= depth) {
+            if (entry.boundType == BoundType::EXACT) {
+                outValue = entry.value;
+                return true;
+            }
+            if (entry.boundType == BoundType::LOWER_BOUND)  alpha = max(alpha, entry.value);
+            if (entry.boundType == BoundType::UPPER_BOUND)  beta = min(beta, entry.value);
+            if (alpha >= beta) {
+                outValue = entry.value;
+                return true;
+            }
+        }
     }
     return false;
 }
 
 // トランスポジションテーブル結果保存関数
-void storeTransposition(uint64_t hashKey, int depth) {
+void storeTranspositionTable(uint64_t hashKey, int depth, int value, BoundType boundType) {
     unique_lock lock(TableMutex); // 書き込み時は排他ロック
-    TranspositionTable[hashKey] = {depth};
-}
-
-// ハッシュキーの更新
-void updateHashKey(int stone, int y, int x) {
-    CurrentHashKey ^= ZobristTable[y * BOARD_SIZE + x][stone];
+    TranspositionTable[hashKey] = {value, depth, boundType};
 }
 
 //* 判定関数
@@ -285,7 +308,6 @@ bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitbo
 //!----------
 //! 禁じ手処理
 //!----------
-
 
 // 33禁判定
 bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone) {
@@ -659,16 +681,6 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 int depth, int alpha, int beta, bool isMaximizingPlayer) {
     int eval;
 
-    //boardPrint(board);
-    // 一秒待機
-    // cout << "hashkey: " << CurrentHashKey << endl;
-    // this_thread::sleep_for(chrono::milliseconds(25));
-
-    // トランスポーテーションテーブルの確認
-    // if (probeTranspositionTable(CurrentHashKey, depth, alpha, beta, eval)) {
-    //     return eval;
-    // }
-
     // 勝利判定の確認
     switch(isWin(computer, opponent, History)) {
         case GameSet::WIN:
@@ -684,10 +696,14 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             break;
     }
 
+    // トランスポーテーションテーブル参照
+    if (probeTranspositionTable(CurrentHashKey, depth, alpha, beta, eval)) {
+        return eval;
+    }
+
     // 探索の末端のとき
     if (depth == MAX_DEPTH) {
         eval = evaluateBoard(computer, opponent);
-        storeTransposition(CurrentHashKey, eval);
         return eval;
     }
 
@@ -699,47 +715,48 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
 
                 setBit(computer, y, x);
-                updateHashKey(ComStone, y, x);
+                updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ更新
                 History.push({{y, x}, ComStone});
 
                 int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, false);
 
                 clearBit(computer, y, x);
+                updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ復元
                 History.pop();
-                updateHashKey(ComStone, y, x);
 
                 maxEval = max(maxEval, eval);
                 alpha = max(alpha, eval);
+
                 if (beta <= alpha) break; // Beta cut-off
             }
         }
-
-        //BoundType boundType = (maxEval <= alpha) ? BoundType::UPPER_BOUND : ((maxEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        //storeTransposition(CurrentHashKey, depth, maxEval, boundType);
+        storeTranspositionTable(CurrentHashKey, depth, maxEval, 
+                        (maxEval <= alpha ? BoundType::UPPER_BOUND : (maxEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return maxEval;
     } else {
         int minEval = INF;
 
         for (const auto& [y, x] : SPIRAL_MOVES) {
             if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
+
                 setBit(opponent, y, x);
-                updateHashKey(OppStone, y, x);
+                updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ更新
                 History.push({{y, x}, OppStone});
 
                 int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, true);
 
                 clearBit(opponent, y, x);
-                updateHashKey(OppStone, y, x);
+                updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ復元
                 History.pop();
 
                 minEval = min(minEval, eval);
                 beta = min(beta, eval);
+
                 if (beta <= alpha) break; // Alpha cut-off
             }
         }
-
-        //BoundType boundType = (minEval <= alpha) ? BoundType::UPPER_BOUND : ((minEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        //storeTransposition(CurrentHashKey, depth, minEval, boundType);
+        storeTranspositionTable(CurrentHashKey, depth, minEval,
+                        (minEval <= alpha ? BoundType::UPPER_BOUND : (minEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return minEval;
     }
 }
