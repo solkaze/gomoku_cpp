@@ -96,52 +96,25 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
 // グローバル変数として初期化
 constexpr auto SPIRAL_MOVES = generateSpiralMoves();
 
-// 事前に準備するマスク
-
-constexpr array<uint64_t, 64> generateHorizontalMasks() {
-    array<uint64_t, 64> masks = {};
-    int index = 0;
-
-    for (int row = 0; row < K_BOARD_SIZE; ++row) {
-        for (int start = 0; start <= 9; ++start) {  // 横方向の開始位置（15 - 6 + 1 = 10）
-            uint64_t mask = 0;
-            for (int i = 0; i < 6; ++i) {
-                mask |= (1ULL << (row * 15 + start + i));  // 6マス分をセット
-            }
-            masks[index++] = mask;
-        }
-    }
-
-    return masks;
-}
 
 
 //* ビット列をbitBoardとして表す
-
 using BitBoard = array<uint64_t, BITBOARD_PARTS>;
+
+constexpr BitBoard openFourMask() {
+
+}
 
 
 //*==================================================
 //*    構造体, クラス, 列挙
 //*==================================================
 
-enum class BoundType {
-    EXACT,
-    LOWER_BOUND,
-    UPPER_BOUND
-};
-
 enum class GameSet {
     WIN,
     LOSE,
     PROHIBITED,
     CONTINUE
-};
-
-struct TranspositionEntry {
-    int value;  // 評価値
-    int depth;  // 深さ
-    BoundType boundType; // バウンドタイプ
 };
 
 
@@ -155,20 +128,8 @@ int ComStone;
 // 対戦相手の石
 int OppStone;
 
-// Zobristハッシュ用のテーブル
-array<array<uint64_t, 2>, TOTAL_CELLS> ZobristTable;
-
-// ハッシュキー
-thread_local uint64_t CurrentHashKey = 0; // 初期状態
-
-// トランスポジションテーブルの定義
-unordered_map<uint64_t, TranspositionEntry> TranspositionTable;
-
 // 共有ロック
 shared_mutex TableMutex;
-
-// ミューテックスの定義
-shared_mutex TransTableMutex;
 
 // 履歴スタック
 thread_local stack<pair<pair<int, int>, int>> History;
@@ -181,15 +142,6 @@ BitBoard OpponentBitboard{};
 //*==================================================
 //*    プロトタイプ関数宣言
 //*==================================================
-
-//ZobristHashMap関数
-void initZobristTable();
-// ハッシュキーの更新
-void updateHash(uint64_t& hash, int y, int x, int stone);
-// トランスポジションテーブル結果保存関数
-void storeTranspositionTable(uint64_t hashKey, int depth, int value, BoundType boundType);
-// トランスポジションテーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey,int depth, int alpha, int beta, int& outValue);
 
 
 // 範囲外判定
@@ -248,54 +200,6 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 //*==================================================
 
 
-//* HashMap関数
-
-// ゲーム開始時にテーブルを初期化
-void initZobristTable() {
-    mt19937_64 rng(12345); // ランダム値生成器（シードは固定）
-    uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
-
-    for (int i = 0; i < TOTAL_CELLS; ++i) {
-        ZobristTable[i][0] = dist(rng); // 自分の石用のランダム値
-        ZobristTable[i][1] = dist(rng); // 相手の石用のランダム値
-    }
-}
-
-// ハッシュキーの更新
-void updateHash(uint64_t& hash, int y, int x, int stone) {
-    int index = y * BOARD_SIZE + x;
-    hash ^= ZobristTable[index][stone]; // XORで更新
-}
-
-// トランスポジションテーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue) {
-    shared_lock lock(TableMutex); // 読み込み時は共有ロック
-    auto it = TranspositionTable.find(hashKey);
-
-    if (it != TranspositionTable.end()) {
-        const TranspositionEntry& entry = it->second;
-        if (entry.depth >= depth) {
-            if (entry.boundType == BoundType::EXACT) {
-                outValue = entry.value;
-                return true;
-            } else if (entry.boundType == BoundType::LOWER_BOUND && entry.value >= beta) {
-                outValue = entry.value;
-                return true;
-            } else if (entry.boundType == BoundType::UPPER_BOUND && entry.value <= alpha) {
-                outValue = entry.value;
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-// トランスポジションテーブル結果保存関数
-void storeTranspositionTable(uint64_t hashKey, int depth, int value, BoundType boundType) {
-    unique_lock lock(TableMutex); // 書き込み時は排他ロック
-    TranspositionTable[hashKey] = {value, depth, boundType};
-}
-
 //* 判定関数
 
 // 範囲外判定
@@ -305,10 +209,7 @@ bool isOutOfRange(int x, int y) {
 
 // 満杯判定
 bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitboard) {
-    BitBoard combined;
-    for (int i = 0; i < 4; i++) {
-        combined[i] = computerBitboard[i] | opponentBitboard[i];  // 黒と白のビットボードを OR 演算
-    }
+    BitBoard combined = computerBitboard | opponentBitboard;
 
     // 全ビットが埋まっている（= 全てのビットが 1）場合
     for (int i = 0; i < 3; i++) {
@@ -672,33 +573,35 @@ bool isFourInARow(const BitBoard& computer, const BitBoard& opponent, int& y, in
     return false;
 }
 
-// 両端空きの四連（6ビット）を判定
-bool hasOpenFour(const BitBoard& bitboard) {
-    
-}
-
-// ビットボードの特定の方向でのパターン評価
-int evaluateDirection(const BitBoard& bitboard, const BitBoard& opponent, int shift) {
+int evaluate_patterns(const BitBoard& bitboard, const BitBoard& empty_board) {
     int score = 0;
 
     return score;
 }
 
+
 // 評価関数
-int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
+int evaluateBoard(const BitBoard& computer, const BitBoard& opponent, const array<BitBoard, 15 * 11>& masks) {
+    BitBoard empty_board = ~(computer | opponent);
     int score = 0;
+    __m256i computer_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&computer));
+    __m256i opponent_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&opponent));
 
-    // 横方向の評価
-    score += evaluateDirection(computer, opponent, 1);
+    // AVXで256ビット単位で処理
+    for (const auto& mask : masks) {
+        __m256i mask_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&mask));
 
-    // 縦方向の評価
-    score += evaluateDirection(computer, opponent, BOARD_SIZE);
+        // マスクを適用して五連を判定
+        __m256i computer_result = _mm256_and_si256(mask_vec, computer_vec);
+        __m256i opponent_result = _mm256_and_si256(mask_vec, opponent_vec);
 
-    // 斜め方向（右下がり）の評価
-    score += evaluateDirection(computer, opponent, BOARD_SIZE + 1);
-
-    // 斜め方向（右上がり）の評価
-    score += evaluateDirection(computer, opponent, BOARD_SIZE - 1);
+        // 五連が揃ったかどうかを判定（例として簡易的な比較）
+        if (_mm256_testc_si256(mask_vec, computer_result)) {
+            score += SCORE_FIVE;
+        } else if (_mm256_testc_si256(mask_vec, opponent_result)) {
+            score -= SCORE_FIVE;
+        }
+    }
 
     return score;
 }
