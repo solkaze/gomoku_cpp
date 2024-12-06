@@ -40,8 +40,6 @@ constexpr bool PROHIBITED_THREE_THREE  = true;
 constexpr bool PROHIBITED_FOUR_FOUR    = true;
 constexpr bool PROHIBITED_LONG_LONG    = false;
 
-constexpr int OPEN_FOUR_MASK = 0b011110;
-
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
     {0,  1},
@@ -100,10 +98,6 @@ constexpr auto SPIRAL_MOVES = generateSpiralMoves();
 
 //* ビット列をbitBoardとして表す
 using BitBoard = array<uint64_t, BITBOARD_PARTS>;
-
-constexpr BitBoard openFourMask() {
-
-}
 
 
 //*==================================================
@@ -573,35 +567,10 @@ bool isFourInARow(const BitBoard& computer, const BitBoard& opponent, int& y, in
     return false;
 }
 
-int evaluate_patterns(const BitBoard& bitboard, const BitBoard& empty_board) {
-    int score = 0;
-
-    return score;
-}
-
-
 // 評価関数
-int evaluateBoard(const BitBoard& computer, const BitBoard& opponent, const array<BitBoard, 15 * 11>& masks) {
+int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
     BitBoard empty_board = ~(computer | opponent);
     int score = 0;
-    __m256i computer_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&computer));
-    __m256i opponent_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&opponent));
-
-    // AVXで256ビット単位で処理
-    for (const auto& mask : masks) {
-        __m256i mask_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&mask));
-
-        // マスクを適用して五連を判定
-        __m256i computer_result = _mm256_and_si256(mask_vec, computer_vec);
-        __m256i opponent_result = _mm256_and_si256(mask_vec, opponent_vec);
-
-        // 五連が揃ったかどうかを判定（例として簡易的な比較）
-        if (_mm256_testc_si256(mask_vec, computer_result)) {
-            score += SCORE_FIVE;
-        } else if (_mm256_testc_si256(mask_vec, opponent_result)) {
-            score -= SCORE_FIVE;
-        }
-    }
 
     return score;
 }
@@ -609,7 +578,6 @@ int evaluateBoard(const BitBoard& computer, const BitBoard& opponent, const arra
 // アルファ・ベータ法
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 int depth, int alpha, int beta, bool isMaximizingPlayer) {
-    int eval;
 
     // 勝利判定の確認
     switch(isWin(computer, opponent, History)) {
@@ -626,16 +594,9 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             break;
     }
 
-    // トランスポーテーションテーブル参照
-    // if (probeTranspositionTable(CurrentHashKey, depth, alpha, beta, eval)) {
-    //     return eval;
-    // }
-
     // 探索の末端のとき
     if (depth == MAX_DEPTH) {
-        eval = evaluateBoard(computer, opponent);
-        // storeTranspositionTable(CurrentHashKey, depth, eval, BoundType::EXACT);
-        return eval;
+        return evaluateBoard(computer, opponent);
     }
 
     // アルファ・ベータ法の本編
@@ -646,13 +607,11 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
 
                 setBit(computer, y, x);
-                // updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ更新
                 History.push({{y, x}, ComStone});
 
                 int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, false);
 
                 clearBit(computer, y, x);
-                // updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ復元
                 History.pop();
 
                 maxEval = max(maxEval, eval);
@@ -661,8 +620,6 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 if (beta <= alpha) break; // Beta cut-off
             }
         }
-        // storeTranspositionTable(CurrentHashKey, depth, maxEval,
-        //                 (maxEval <= alpha ? BoundType::UPPER_BOUND : (maxEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return maxEval;
     } else {
         int minEval = INF;
@@ -671,13 +628,11 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
 
                 setBit(opponent, y, x);
-                // updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ更新
                 History.push({{y, x}, OppStone});
 
                 int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, true);
 
                 clearBit(opponent, y, x);
-                // updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ復元
                 History.pop();
 
                 minEval = min(minEval, eval);
@@ -686,8 +641,6 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 if (beta <= alpha) break; // Alpha cut-off
             }
         }
-        // storeTranspositionTable(CurrentHashKey, depth, minEval,
-        //                 (minEval <= alpha ? BoundType::UPPER_BOUND : (minEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return minEval;
     }
 }
