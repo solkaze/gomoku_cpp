@@ -1,12 +1,27 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <numeric>
+#include <array>
+#include <unordered_map>
+#include <vector>
+#include <algorithm>
+#include <limits>
+#include <random>
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <shared_mutex>
+#include <stack>
+#include <atomic>
+#include <future>
+#include <immintrin.h>
 
 #include "gomoku.hpp"
 
 using namespace std;
 
-//* ==================================================
-//*     定数
-//* ==================================================
+//*==================================================
+//*    定数
+//*==================================================
 
 // int型の最大数
 constexpr int INF = numeric_limits<int>::max();
@@ -20,16 +35,26 @@ constexpr int SCORE_CLOSED_THREE  = 500;
 constexpr int SCORE_OPEN_TWO      = 100;
 constexpr int SCORE_CLOSED_TWO    = 50;
 
+// 禁じ手
+constexpr bool PROHIBITED_THREE_THREE  = true;
+constexpr bool PROHIBITED_FOUR_FOUR    = true;
+constexpr bool PROHIBITED_LONG_LONG    = false;
+
+constexpr int OPEN_FOUR_MASK = 0b011110;
+
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
-    {0, 1},
-    {1, 0},
-    {1, 1},
+    {0,  1},
+    {1,  0},
+    {1,  1},
     {1, -1}
 }};
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 3;
+constexpr int MAX_DEPTH = 4;
+
+// スレッドの最大数
+constexpr int MAX_THREADS = 8;
 
 // コンパイル時初期化のための定数 15マス
 constexpr int K_BOARD_SIZE = BOARD_SIZE;
@@ -37,11 +62,17 @@ constexpr int K_BOARD_SIZE = BOARD_SIZE;
 // すべてのマスの数 225マス
 constexpr int TOTAL_CELLS = K_BOARD_SIZE * K_BOARD_SIZE;
 
+// 必要なuint64_tの数
+constexpr int BITBOARD_PARTS = (TOTAL_CELLS + 63) / 64;
+
+// ビット列の最大サイズ
+constexpr int SEGMENT_SIZE = 64;
+
 // コンパイル時に自動生成
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     array<pair<int, int>, TOTAL_CELLS> moves{};
-    int cx = K_BOARD_SIZE / 2, cy = K_BOARD_SIZE / 2;
-    moves[0] = {cx, cy};
+    int cy = K_BOARD_SIZE / 2, cx = K_BOARD_SIZE / 2;
+    moves[0] = {cy, cx};
 
     const int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
     int steps = 1;
@@ -50,10 +81,10 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     while (index < TOTAL_CELLS) {
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < steps && index < TOTAL_CELLS; ++j) {
-                cx += directions[i][0];
-                cy += directions[i][1];
-                if (cx >= 0 && cx < K_BOARD_SIZE && cy >= 0 && cy < K_BOARD_SIZE) {
-                    moves[index++] = {cx, cy};
+                cy += directions[i][0];
+                cx += directions[i][1];
+                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 && cx < K_BOARD_SIZE) {
+                    moves[index++] = {cy, cx};
                 }
             }
             if (i % 2 == 1) ++steps;
@@ -65,41 +96,70 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
 // グローバル変数として初期化
 constexpr auto SPIRAL_MOVES = generateSpiralMoves();
 
+// 事前に準備するマスク
 
-//* ==================================================
-//*     構造体, クラス, 列挙
-//* ==================================================
+constexpr array<uint64_t, 64> generateHorizontalMasks() {
+    array<uint64_t, 64> masks = {};
+    int index = 0;
+
+    for (int row = 0; row < K_BOARD_SIZE; ++row) {
+        for (int start = 0; start <= 9; ++start) {  // 横方向の開始位置（15 - 6 + 1 = 10）
+            uint64_t mask = 0;
+            for (int i = 0; i < 6; ++i) {
+                mask |= (1ULL << (row * 15 + start + i));  // 6マス分をセット
+            }
+            masks[index++] = mask;
+        }
+    }
+
+    return masks;
+}
+
+
+//* ビット列をbitBoardとして表す
+
+using BitBoard = array<uint64_t, BITBOARD_PARTS>;
+
+
+//*==================================================
+//*    構造体, クラス, 列挙
+//*==================================================
 
 enum class BoundType {
     EXACT,
-    UPPER_BOUND,
-    LOWER_BOUND
+    LOWER_BOUND,
+    UPPER_BOUND
+};
+
+enum class GameSet {
+    WIN,
+    LOSE,
+    PROHIBITED,
+    CONTINUE
 };
 
 struct TranspositionEntry {
-    int value;              // 評価値
-    int depth;              // 探索した深さ
-    BoundType boundType;    // 何の条件で保存したか (Exact, Upper Bound, Lower Bound)
+    int value;  // 評価値
+    int depth;  // 深さ
+    BoundType boundType; // バウンドタイプ
 };
 
 
-//* ==================================================
-//*     グローバル変数
-//* ==================================================
+//*==================================================
+//*    グローバル変数
+//*==================================================
 
-// コンピュータの石
+// CPUの石
 int ComStone;
 
-// プレイヤーの石
-int PlayerStone;
+// 対戦相手の石
+int OppStone;
 
-// 禁じ手
-bool gProhibitedThreeThree = false;
-bool gProhibitedFourFour = false;
-bool gProhibitedLongLen = false;
+// Zobristハッシュ用のテーブル
+array<array<uint64_t, 2>, TOTAL_CELLS> ZobristTable;
 
-// zobristハッシュ関数の定義
-array<array<uint64_t, 3>, TOTAL_CELLS> ZobristTable;
+// ハッシュキー
+thread_local uint64_t CurrentHashKey = 0; // 初期状態
 
 // トランスポジションテーブルの定義
 unordered_map<uint64_t, TranspositionEntry> TranspositionTable;
@@ -110,72 +170,108 @@ shared_mutex TableMutex;
 // ミューテックスの定義
 shared_mutex TransTableMutex;
 
-// 参照
-thread_local uint64_t CurrentHashKey = 0;
+// 履歴スタック
+thread_local stack<pair<pair<int, int>, int>> History;
+
+// ビットボード
+BitBoard ComputerBitboard{};
+BitBoard OpponentBitboard{};
 
 
-//* ==================================================
-//*     プロトタイプ関数宣言
-//* ==================================================
+//*==================================================
+//*    プロトタイプ関数宣言
+//*==================================================
 
-// Zobristハッシュの初期化
+//ZobristHashMap関数
 void initZobristTable();
-
 // ハッシュキーの更新
-void updateHashKey(int y, int x, int stone);
+void updateHash(uint64_t& hash, int y, int x, int stone);
+// トランスポジションテーブル結果保存関数
+void storeTranspositionTable(uint64_t hashKey, int depth, int value, BoundType boundType);
+// トランスポジションテーブル参照関数
+bool probeTranspositionTable(uint64_t hashKey,int depth, int alpha, int beta, int& outValue);
 
-// テーブル参照関数
-bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue);
 
-// テーブル保存関数
-void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundType);
+// 範囲外判定
+bool isOutOfRange(int x, int y);
+// 満杯判定
+bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitboard);
+// 勝利判定
+GameSet isWin(BitBoard& computerBitboard,
+                BitBoard& opponentBitboard,
+                    stack<pair<pair<int, int>, int>>& History);
+// 特定の方向で勝利判定（前述の関数を利用）
+bool isWinDirection(int y, int x, const BitBoard& bitboard);
 
-// ボード評価関数
-int evaluateBoard(int board[][BOARD_SIZE]);
 
-// 周辺の評価
-int evaluateStoneRange(int board[][BOARD_SIZE], const int row, const int col);
+// 33禁判定
+bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone);
+// 44禁判定
+bool isProhibitedFourFour(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone);
+// 長連禁判定
+bool isProhibitedLongLens(const BitBoard& bitboard, int y, int x);
 
-// 一列の評価関数
-int evaluateLine(const vector<pair<int, int>>& line);
 
+// 指定位置を1にする
+inline void setBit(BitBoard& bitboard, int y, int x);
+// 指定位置を0にする
+inline void clearBit(BitBoard& bitboard, int y, int x);
+// 指定位置のビットが1か0か
+inline bool checkBit(const BitBoard& bitboard, int y, int x);
+// 配列をビット列に変換
+void convertToBitboards(int board[][BOARD_SIZE]);
+
+
+// AND 演算
+BitBoard operator&(const BitBoard& lhs, const BitBoard& rhs);
+// OR 演算
+BitBoard operator|(const BitBoard& lhs, const BitBoard& rhs);
+// XOR 演算
+BitBoard operator^(const BitBoard& lhs, const BitBoard& rhs);
+// NOT 演算
+BitBoard operator~(const BitBoard& bitboard);
+
+
+// ボード全体の評価
+int evaluateBoard(const BitBoard& comBitboard, const BitBoard& oppBitboard);
 // アルファ・ベータ法
-int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool maximizingPlayer);
-
+int alphaBeta(BitBoard& computer, BitBoard& opponent,
+                int depth, int alpha, int beta, bool isMaximizingPlayer);
 // 最適解探索
-pair<int, int> findBestMove(int board[][BOARD_SIZE]);
-
-// gomoku.cppに配置を返す
+pair<int, int> findBestMove(int pos_x, int pos_y);
+// コマ配置
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 
-// 満杯確認
-bool isFull(int board[][BOARD_SIZE]);
 
-// 勝利確認
-bool isWin(int board[][BOARD_SIZE], int stone);
-
-// 範囲外確認
-bool isOutOfRange(int x, int y);
+//*==================================================
+//*    関数実装
+//*==================================================
 
 
-//* ==================================================
-//*     関数実装
-//* ==================================================
+//* HashMap関数
 
-// Zobristハッシュの初期化
+// ゲーム開始時にテーブルを初期化
 void initZobristTable() {
-    mt19937_64 rng(random_device{}());
-    for (int i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
-        ZobristTable[i][0] = rng();
-        ZobristTable[i][1] = rng();
-        ZobristTable[i][2] = rng();
+    mt19937_64 rng(12345); // ランダム値生成器（シードは固定）
+    uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
+
+    for (int i = 0; i < TOTAL_CELLS; ++i) {
+        ZobristTable[i][0] = dist(rng); // 自分の石用のランダム値
+        ZobristTable[i][1] = dist(rng); // 相手の石用のランダム値
     }
 }
 
-// トランスポジションテーブルを参照する関数（ロックを追加）
+// ハッシュキーの更新
+void updateHash(uint64_t& hash, int y, int x, int stone) {
+    int index = y * BOARD_SIZE + x;
+    hash ^= ZobristTable[index][stone]; // XORで更新
+}
+
+// トランスポジションテーブル参照関数
 bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, int& outValue) {
     shared_lock lock(TableMutex); // 読み込み時は共有ロック
     auto it = TranspositionTable.find(hashKey);
+
     if (it != TranspositionTable.end()) {
         const TranspositionEntry& entry = it->second;
         if (entry.depth >= depth) {
@@ -194,219 +290,527 @@ bool probeTranspositionTable(uint64_t hashKey, int depth, int alpha, int beta, i
     return false;
 }
 
-// トランスポジションテーブルに結果を保存する関数（ロックを追加）
-void storeTransposition(uint64_t hashKey, int depth, int value, BoundType boundType) {
+// トランスポジションテーブル結果保存関数
+void storeTranspositionTable(uint64_t hashKey, int depth, int value, BoundType boundType) {
     unique_lock lock(TableMutex); // 書き込み時は排他ロック
-    TranspositionTable[hashKey] = {depth, value, boundType};
+    TranspositionTable[hashKey] = {value, depth, boundType};
 }
 
-// ハッシュキーの更新
-void updateHashKey(int y, int x, int stone) {
-    CurrentHashKey ^= ZobristTable[y * BOARD_SIZE + x][stone];
-}
+//* 判定関数
 
-// 範囲外確認
+// 範囲外判定
 bool isOutOfRange(int x, int y) {
-    return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
+    return x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE;
 }
 
-// 満杯確認
-bool isFull(int board[][BOARD_SIZE]) {
-    for (int i = 0; i < BOARD_SIZE; ++i) {
-        for (int j = 0; j < BOARD_SIZE; ++j) {
-            if (board[i][j] == STONE_SPACE) return false;
+// 満杯判定
+bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitboard) {
+    BitBoard combined;
+    for (int i = 0; i < 4; i++) {
+        combined[i] = computerBitboard[i] | opponentBitboard[i];  // 黒と白のビットボードを OR 演算
+    }
+
+    // 全ビットが埋まっている（= 全てのビットが 1）場合
+    for (int i = 0; i < 3; i++) {
+        if (combined[i] != ~0ULL) {  // 64ビットが全て1ではない
+            return false;
         }
     }
-    return true;
+
+    // 最後のビットボードの残り部分を確認（225ビット目以降は無視）
+    int remainingBits = 225 - 64 * 3;
+    uint64_t mask = (1ULL << remainingBits) - 1;  // 下位 "remainingBits" ビットのみを 1 にするマスク
+    if ((combined[3] & mask) != mask) {
+        return false;
+    }
+
+    return true;  // 全てのビットが埋まっている
 }
 
-// 勝利確認
-bool isWin(int board[][BOARD_SIZE], int stone) {
-    for (int row = 0; row < BOARD_SIZE; row++) {
-        for (int col = 0; col < BOARD_SIZE; col++) {
-            if (board[row][col] == stone) {
-                // 8方向の探索
-                for (const auto& [dy, dx] : DIRECTIONS) {
-                    int count = 1;
-                    for (int i = 1; i < 5; i++) {
-                        int y = row + i * dy;
-                        int x = col + i * dx;
-                        if (isOutOfRange(x, y) && board[y][x] == stone) {
-                            count++;
-                        } else {
-                            break;
-                        }
-                    }
-                    if (count == 5) return true;
+//!----------
+//! 禁じ手処理
+//!----------
+
+// 33禁判定
+bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone) {
+    int threeCount = 0;
+    const BitBoard bitBoard = stone == ComStone ? computer : opponent;
+    const BitBoard empty = ~(computer | opponent);
+
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        int count = 1;
+        int openCount = 0;
+        // 正方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+
+            if (checkBit(empty, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
                 }
-            }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+
+            ++count;
         }
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+
+            if (checkBit(empty, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
+                }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+
+            ++count;
+        }
+
+        if (count == 3 && openCount != 0) ++threeCount;
     }
+
+    if (threeCount >= 2) return true;
+
     return false;
 }
 
-// 石の並びを評価する関数
-// pair<個数, 石の色>
-int evaluateLine(const vector<pair<int, int>>& line) {
-    int score = 0;
-    // int length = line.size();
+// 44禁判定
+bool isProhibitedFourFour(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone) {
+    int fourCount = 0;
+    const BitBoard bitBoard = stone == ComStone ? computer : opponent;
+    const BitBoard empty = ~(computer | opponent);
 
-    for (const auto& [len, stone] : line) {
-        if (stone == STONE_OUT) continue;
-    }
-
-    return score;
-}
-
-// 石の周辺を評価
-int evaluateStoneRange(int board[][BOARD_SIZE], const int row, const int col) {
-    int score = 0;
-    // 4方向の探索
     for (const auto& [dy, dx] : DIRECTIONS) {
-        vector<pair<int, int>> line;
+        int count = 1;
+        int openCount = 0;
 
-        for (int i = -4; i < 5; i++) {
-            int y = row + i * dy;
-            int x = col + i * dx;
+        // 正方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
 
-            if (line.empty()) { // 配列が空かどうか
-                if (isOutOfRange(x, y)) line.push_back({1, board[y][x]});
-                else                    line.push_back({0, STONE_OUT});
+            if (isOutOfRange(nx, ny)) break;
 
-            } else {
-                if (!isOutOfRange(x, y))                    line.push_back({0, STONE_OUT});
-                else if (line.back().second == board[y][x]) line.back().first++;
-                else                                        line.push_back({1, board[y][x]});
-                
-            }
+            if (checkBit(empty, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
+                }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
 
-            // デバッグ用出力
-            // if (board[y][x] == STONE_SPACE) {
-            //     cout << "空 ";
-            // } else if (board[y][x] == STONE_BLACK) {
-            //     cout << "黒 ";
-            // } else if (board[y][x] == STONE_WHITE) {
-            //     cout << "白 ";
-            // }
-            // if (i == 4) cout << endl;
+            ++count;
         }
 
-        // デバッグ用
-        // for (const auto& [length, stone] : line) {
-        //     cout << "(" << length << ", " << stone << ") ";
-        // }
-        // cout << endl;
-        // this_thread::sleep_for(chrono::milliseconds(25));
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
 
-        score += evaluateLine(line);
+            if (isOutOfRange(nx, ny)) break;
+
+            if (checkBit(empty, ny, nx)) { // 空白
+                if (openCount == 0) { // 飛び石の考慮
+                    ++openCount;
+                    continue;
+                } else {
+                    break;
+                }
+            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+
+            ++count;
+        }
+
+        if (count == 4 && openCount != 0) ++fourCount;
     }
+
+    if (fourCount >= 2) return true;
+
+    return false;
+}
+
+// 長連禁判定
+bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        int longCount = 1;
+        // 正方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitBoard, ny, nx)) break;
+            ++longCount;
+        }
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitBoard, ny, nx)) break;
+            ++longCount;
+        }
+
+        if (longCount >= 6) return true;
+    }
+
+    return false;
+}
+
+//* 勝利判定
+
+// 特定の方向で勝利判定
+bool isWinDirection(int y, int x, const BitBoard& bitboard) {
+
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        int count = 1;
+
+        // 正方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitboard, ny, nx)) break;
+            ++count;
+        }
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (!checkBit(bitboard, ny, nx)) break;
+            ++count;
+        }
+
+        // 5つ以上連続
+        if (count >= 5) return true;
+    }
+
+    return false;
+}
+
+// 勝利判定
+GameSet isWin(BitBoard& computer,
+                BitBoard& opponent,
+                    stack<pair<pair<int, int>, int>>& History) {
+    // スタックが空の場合は処理をスキップ
+    if (History.empty()) return GameSet::CONTINUE;
+
+    // スタックから最後に置かれた手を取り出し
+    auto [lastMove, stoneType] = History.top();
+    int y = lastMove.first;
+    int x = lastMove.second;
+
+    // 禁じ手チェック（先手のみ有効）
+    if (stoneType == STONE_BLACK) {
+        if (PROHIBITED_THREE_THREE && isProhibitedThreeThree(computer, opponent, y, x, stoneType)) {
+            return GameSet::PROHIBITED;
+        }
+        if (PROHIBITED_FOUR_FOUR && isProhibitedFourFour(computer, opponent, y, x, stoneType)) {
+            return GameSet::PROHIBITED;
+        }
+        if (PROHIBITED_LONG_LONG && isProhibitedLongLens(stoneType == ComStone ? computer : opponent, y, x)) {
+            return GameSet::PROHIBITED;
+        }
+    }
+
+    // 勝利判定を行う
+    if (stoneType == ComStone) {
+        if (isWinDirection(y, x, computer)) {
+            return GameSet::WIN;
+        }
+    } else if (stoneType == OppStone) {
+        if (isWinDirection(y, x, opponent)) {
+            return GameSet::LOSE;
+        }
+    }
+
+    return GameSet::CONTINUE;
+}
+
+//* BitBoard操作
+
+// 指定位置を1にする
+inline void setBit(BitBoard& bitboard, int y, int x) {
+    int pos = y * BOARD_SIZE + x;
+    bitboard[pos / 64] |= (1ULL << (pos % 64));
+}
+
+// 指定位置を0にする
+inline void clearBit(BitBoard& bitboard, int y, int x) {
+    int pos = y * BOARD_SIZE + x;
+    bitboard[pos / 64] &= ~(1ULL << (pos % 64));
+}
+
+// 指定位置のビットが1か0か
+inline bool checkBit(const BitBoard& bitboard, int y, int x) {
+    int pos = y * BOARD_SIZE + x;
+    return bitboard[pos / 64] & (1ULL << (pos % 64));
+}
+
+// AND 演算
+BitBoard operator&(const BitBoard& lhs, const BitBoard& rhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = lhs[i] & rhs[i];
+    }
+    return result;
+}
+
+// OR 演算
+BitBoard operator|(const BitBoard& lhs, const BitBoard& rhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = lhs[i] | rhs[i];
+    }
+    return result;
+}
+
+// XOR 演算
+BitBoard operator^(const BitBoard& lhs, const BitBoard& rhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = lhs[i] ^ rhs[i];
+    }
+    return result;
+}
+
+// NOT 演算
+BitBoard operator~(const BitBoard& lhs) {
+    BitBoard result{};
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        result[i] = ~lhs[i];
+    }
+    return result;
+}
+
+// 配列をビット列に変換
+void convertToBitboards(int board[][BOARD_SIZE]) {
+    // 初期化
+    ComputerBitboard.fill(0);
+    OpponentBitboard.fill(0);
+
+    for (int y = 0; y < BOARD_SIZE; ++y) {
+        for (int x = 0; x < BOARD_SIZE; ++x) {
+            int pos = y * BOARD_SIZE + x; // 総ビット位置
+            int part = pos / 64;          // どのuint64_tに対応するか
+            int offset = pos % 64;        // そのuint64_t内のビット位置
+
+            if (board[y][x] == ComStone) { // 黒石
+                ComputerBitboard[part] |= (1ULL << offset);
+            } else if (board[y][x] == OppStone) { // 白石
+                OpponentBitboard[part] |= (1ULL << offset);
+            }
+        }
+    }
+}
+
+// 4連成立確認
+bool isFourInARow(const BitBoard& computer, const BitBoard& opponent, int& y, int& x) {
+    const BitBoard empty = ~(computer | opponent);
+
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        // 正方向
+        int count = 1;
+        bool isSpace = false;
+        int sy = y, sx = x;
+
+        for (int step = 1; step < 5; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (checkBit(empty, ny, nx)) {
+                isSpace = true;
+                sy = ny;
+                sx = nx;
+            }
+            if (!checkBit(opponent, ny, nx)) break;
+            ++count;
+        }
+
+        // 逆方向
+        for (int step = 1; step < 5; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (isOutOfRange(nx, ny)) break;
+            if (checkBit(empty, ny, nx)) {
+                isSpace = true;
+                sy = ny;
+                sx = nx;
+            }
+            if (!checkBit(opponent, ny, nx)) break;
+            ++count;
+        }
+
+        if (count >= 4 && isSpace) {
+            y = sy;
+            x = sx;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// 両端空きの四連（6ビット）を判定
+bool hasOpenFour(const BitBoard& bitboard) {
+    
+}
+
+// ビットボードの特定の方向でのパターン評価
+int evaluateDirection(const BitBoard& bitboard, const BitBoard& opponent, int shift) {
+    int score = 0;
 
     return score;
 }
 
+// 評価関数
+int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
+    int score = 0;
 
-// ボード全体の評価
-int evaluateBoard(int board[][BOARD_SIZE]) {
-    int totalScore = 0;
+    // 横方向の評価
+    score += evaluateDirection(computer, opponent, 1);
 
-    for (int row = 0; row < BOARD_SIZE; row++) {
-        for (int col = 0; col < BOARD_SIZE; col++) {
+    // 縦方向の評価
+    score += evaluateDirection(computer, opponent, BOARD_SIZE);
 
-            if (board[row][col] != STONE_SPACE) totalScore = evaluateStoneRange(board, row, col);
-        }
-    }
+    // 斜め方向（右下がり）の評価
+    score += evaluateDirection(computer, opponent, BOARD_SIZE + 1);
 
-    return totalScore;
+    // 斜め方向（右上がり）の評価
+    score += evaluateDirection(computer, opponent, BOARD_SIZE - 1);
+
+    return score;
 }
 
 // アルファ・ベータ法
-int alphaBeta(int board[][BOARD_SIZE], int depth, int alpha, int beta, bool isMaximizingPlayer) {
-    int stone = isMaximizingPlayer ? ComStone : PlayerStone;
+int alphaBeta(BitBoard& computer, BitBoard& opponent,
+                int depth, int alpha, int beta, bool isMaximizingPlayer) {
     int eval;
 
-    //boardPrint(board);
-    // 一秒待機
-    // cout << "hashkey: " << CurrentHashKey << endl;
-    // this_thread::sleep_for(chrono::milliseconds(25));
+    // 勝利判定の確認
+    switch(isWin(computer, opponent, History)) {
+        case GameSet::WIN:
+            if (depth == 0) return INF;
+            return SCORE_FIVE;
+        case GameSet::PROHIBITED:
+            if (depth == 0) return ComStone == STONE_BLACK ? -INF + 1 : INF;
+            return ComStone == STONE_BLACK ? -SCORE_FIVE : SCORE_FIVE;
+        case GameSet::LOSE:
+            if (depth == 0) return -INF + 1;
+            return -SCORE_FIVE;
+        case GameSet::CONTINUE:
+            break;
+    }
 
-    // トランスポーテーションテーブルの確認
+    // トランスポーテーションテーブル参照
     // if (probeTranspositionTable(CurrentHashKey, depth, alpha, beta, eval)) {
     //     return eval;
     // }
 
-    // 勝利判定の確認
-    if (isWin(board, stone)) {
-        return isMaximizingPlayer ? INF : -INF;
-    }
-
     // 探索の末端のとき
-    if (depth == MAX_DEPTH || isFull(board)) {
-        eval = evaluateBoard(board);
-        storeTransposition(CurrentHashKey, depth, eval, BoundType::EXACT);
+    if (depth == MAX_DEPTH) {
+        eval = evaluateBoard(computer, opponent);
+        // storeTranspositionTable(CurrentHashKey, depth, eval, BoundType::EXACT);
         return eval;
     }
 
     // アルファ・ベータ法の本編
     if (isMaximizingPlayer) {
         int maxEval = -INF;
-        for (const auto& [y, x] : SPIRAL_MOVES) {
-            if (board[y][x] == STONE_SPACE) {
-                board[y][x] = ComStone;
-                updateHashKey(y, x, ComStone);
 
-                int eval = alphaBeta(board, depth + 1, alpha, beta, false);
-                board[y][x] = STONE_SPACE;
-                updateHashKey(y, x, ComStone);
+        for (const auto& [y, x] : SPIRAL_MOVES) {
+            if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
+
+                setBit(computer, y, x);
+                // updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ更新
+                History.push({{y, x}, ComStone});
+
+                int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, false);
+
+                clearBit(computer, y, x);
+                // updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ復元
+                History.pop();
 
                 maxEval = max(maxEval, eval);
                 alpha = max(alpha, eval);
+
                 if (beta <= alpha) break; // Beta cut-off
             }
         }
-        //BoundType boundType = (maxEval <= alpha) ? BoundType::UPPER_BOUND : ((maxEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        //storeTransposition(CurrentHashKey, depth, maxEval, boundType);
+        // storeTranspositionTable(CurrentHashKey, depth, maxEval,
+        //                 (maxEval <= alpha ? BoundType::UPPER_BOUND : (maxEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return maxEval;
     } else {
         int minEval = INF;
-        for (const auto& [y, x] : SPIRAL_MOVES) {
-            if (board[y][x] == STONE_SPACE) {
-                board[y][x] = PlayerStone;
-                updateHashKey(y, x, PlayerStone);
 
-                int eval = alphaBeta(board, depth + 1, alpha, beta, true);
-                board[y][x] = STONE_SPACE;
-                updateHashKey(y, x, PlayerStone);
+        for (const auto& [y, x] : SPIRAL_MOVES) {
+            if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
+
+                setBit(opponent, y, x);
+                // updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ更新
+                History.push({{y, x}, OppStone});
+
+                int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, true);
+
+                clearBit(opponent, y, x);
+                // updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ復元
+                History.pop();
 
                 minEval = min(minEval, eval);
                 beta = min(beta, eval);
+
                 if (beta <= alpha) break; // Alpha cut-off
             }
         }
-        //BoundType boundType = (minEval <= alpha) ? BoundType::UPPER_BOUND : ((minEval >= beta) ? BoundType::LOWER_BOUND : BoundType::EXACT);
-        //storeTransposition(CurrentHashKey, depth, minEval, boundType);
+        // storeTranspositionTable(CurrentHashKey, depth, minEval,
+        //                 (minEval <= alpha ? BoundType::UPPER_BOUND : (minEval >= beta ? BoundType::LOWER_BOUND : BoundType::EXACT)));
         return minEval;
     }
 }
 
 // 最適解探索
-pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
+pair<int, int> findBestMove(int pos_y, int pos_x) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
     vector<future<pair<int, pair<int, int>>>> futures;
     mutex mtx; // 排他制御用
     atomic<int> threadCount(0); // 実行スレッド数
 
-    const int max_threads = 8;
+    if (isFourInARow(ComputerBitboard, OpponentBitboard, pos_y, pos_x)) {
+        return make_pair(pos_y, pos_x);
+    }
 
     // 各手を分割して並行処理
-    for (const auto& [y, x] : SPIRAL_MOVES) {
-        if (board[y][x] == STONE_SPACE) {
+    for (const auto& [dy, dx] : SPIRAL_MOVES) {
+
+        if (!checkBit(ComputerBitboard, dy, dx) && !checkBit(OpponentBitboard, dy, dx)) { // 空白確認
             // スレッドの上限を維持
-            if (futures.size() >= max_threads) {
+            if (futures.size() >= MAX_THREADS) {
                 for (auto& fut : futures) {
                     auto [moveVal, pos] = fut.get(); // 結果を取得
+                    cout << pos.first << ", " << pos.second << ": " << moveVal << endl;
                     lock_guard<mutex> lock(mtx); // 排他制御
-                    cout << "座標と結果: y:" << pos.first << " x:" << pos.second << " moveVal:" << moveVal << endl;
                     if (moveVal > bestVal) {
                         bestVal = moveVal;
                         bestMove = pos;
@@ -416,19 +820,24 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
             }
 
             // 新しいスレッドで評価を非同期実行
-            futures.emplace_back(async(launch::async, [=, &board, &mtx, &threadCount]() {
-                int localBoard[BOARD_SIZE][BOARD_SIZE];
-                copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
+            futures.emplace_back(async(launch::async, [=, &bestVal, &threadCount]() {
+                BitBoard localCom = ComputerBitboard;
+                BitBoard localOpp = OpponentBitboard;
 
-                localBoard[y][x] = ComStone;
-                int moveVal = alphaBeta(localBoard, 0, bestVal, INF, false);
-                localBoard[y][x] = STONE_SPACE;
+                // ビットボードに現在の手を設定
+                setBit(localCom, dy, dx);
+                History.push({{dy, dx}, ComStone});
+
+                // アルファ・ベータ探索を実行
+                int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
+                History.pop();
 
                 // スレッド数をカウント
                 threadCount++;
-                return make_pair(moveVal, make_pair(y, x));
+                return make_pair(moveVal, make_pair(dy, dx));
             }));
         }
+
     }
 
     // 残りのスレッド結果を反映
@@ -443,22 +852,28 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE]) {
 
     // スレッド数を出力
     cout << "実行されたスレッド数: " << threadCount.load() << endl;
+    cout << bestVal << endl;
     return bestMove;
 }
 
 // 最適解探索スレッドなし
-pair<int, int> findBestMoveSample(int board[][BOARD_SIZE]) {
+pair<int, int> findBestMoveSample() {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
 
     for (const auto& [y, x] : SPIRAL_MOVES) {
-        if (board[y][x] == STONE_SPACE) {
-            int localBoard[BOARD_SIZE][BOARD_SIZE];
-            copy(&board[0][0], &board[0][0] + BOARD_SIZE * BOARD_SIZE, &localBoard[0][0]);
+        if (!checkBit(ComputerBitboard, y, x) && !checkBit(OpponentBitboard, y, x)) {
+            BitBoard localCom = ComputerBitboard;
+            BitBoard localOpp = OpponentBitboard;
 
-            localBoard[y][x] = ComStone;
-            int moveVal = alphaBeta(localBoard, 0, bestVal, INF, false);
-            localBoard[y][x] = STONE_SPACE;
+            setBit(localCom, y, x);
+            History.push({{y, x}, ComStone});
+
+            int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
+
+            clearBit(localCom, y, x);
+            History.pop();
+            cout << moveVal << endl;
 
             if (moveVal > bestVal) {
                 bestVal = moveVal;
@@ -477,7 +892,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     if (isFirst) {
         isFirst = false;
         ComStone = com;
-        PlayerStone = ComStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
+        OppStone = ComStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
 
         if (ComStone == STONE_BLACK) {
             *pos_y = BOARD_SIZE / 2;
@@ -486,10 +901,13 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
         }
     }
 
+    convertToBitboards(board);
+
     // 配置処理
-    pair<int, int> bestMove = findBestMoveSample(board);
-    cout << "おいた場所は( " << bestMove.first << "," << bestMove.second << " )" << endl;
+    pair<int, int> bestMove = findBestMove(*pos_y, *pos_x);
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
+
+    cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )" << endl;
     return 0;
 }

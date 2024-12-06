@@ -20,7 +20,7 @@ void boardInit(int board[][BOARD_SIZE]);
 void boardPrint(int board[][BOARD_SIZE]);
 int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Board[][BOARD_SIZE]);
 
-int check = 4;  // 1:三三のみ 2:四四のみ 4:長連のみ 3:三三と四四 5:三三と長連
+int check = 3;  // 1:三三のみ 2:四四のみ 4:長連のみ 3:三三と四四 5:三三と長連
                 // 6:四四と長連 7:全部
 
 //=======================================================
@@ -65,7 +65,7 @@ int main() {
 // 置く場所入力
 //-------------------------------------------------
 int inputPutPos(int board[][BOARD_SIZE], int which, int com) {
-    int pos_x = -1, pos_y = -1;
+    static int pos_x = -1, pos_y = -1;
     char buf[10];
 
     if(which == com) {
