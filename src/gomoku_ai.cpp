@@ -13,6 +13,7 @@
 #include <stack>
 #include <atomic>
 #include <future>
+#include <immintrin.h>
 
 #include "gomoku.hpp"
 
@@ -38,6 +39,8 @@ constexpr int SCORE_CLOSED_TWO    = 50;
 constexpr bool PROHIBITED_THREE_THREE  = true;
 constexpr bool PROHIBITED_FOUR_FOUR    = true;
 constexpr bool PROHIBITED_LONG_LONG    = false;
+
+constexpr int OPEN_FOUR_MASK = 0b011110;
 
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
@@ -92,6 +95,25 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
 
 // グローバル変数として初期化
 constexpr auto SPIRAL_MOVES = generateSpiralMoves();
+
+// 事前に準備するマスク
+
+constexpr array<uint64_t, 64> generateHorizontalMasks() {
+    array<uint64_t, 64> masks = {};
+    int index = 0;
+
+    for (int row = 0; row < K_BOARD_SIZE; ++row) {
+        for (int start = 0; start <= 9; ++start) {  // 横方向の開始位置（15 - 6 + 1 = 10）
+            uint64_t mask = 0;
+            for (int i = 0; i < 6; ++i) {
+                mask |= (1ULL << (row * 15 + start + i));  // 6マス分をセット
+            }
+            masks[index++] = mask;
+        }
+    }
+
+    return masks;
+}
 
 
 //* ビット列をbitBoardとして表す
@@ -151,7 +173,7 @@ shared_mutex TransTableMutex;
 // 履歴スタック
 thread_local stack<pair<pair<int, int>, int>> History;
 
-// ビットボード（黒と白用）
+// ビットボード
 BitBoard ComputerBitboard{};
 BitBoard OpponentBitboard{};
 
@@ -650,6 +672,11 @@ bool isFourInARow(const BitBoard& computer, const BitBoard& opponent, int& y, in
     return false;
 }
 
+// 両端空きの四連（6ビット）を判定
+bool hasOpenFour(const BitBoard& bitboard) {
+    
+}
+
 // ビットボードの特定の方向でのパターン評価
 int evaluateDirection(const BitBoard& bitboard, const BitBoard& opponent, int shift) {
     int score = 0;
@@ -716,13 +743,13 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
 
                 setBit(computer, y, x);
-                updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ更新
+                // updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ更新
                 History.push({{y, x}, ComStone});
 
                 int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, false);
 
                 clearBit(computer, y, x);
-                updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ復元
+                // updateHash(CurrentHashKey, y, x, ComStone); // ハッシュ復元
                 History.pop();
 
                 maxEval = max(maxEval, eval);
@@ -741,13 +768,13 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (!checkBit(computer, y, x) && !checkBit(opponent, y, x)) {
 
                 setBit(opponent, y, x);
-                updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ更新
+                // updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ更新
                 History.push({{y, x}, OppStone});
 
                 int eval = alphaBeta(computer, opponent, depth + 1, alpha, beta, true);
 
                 clearBit(opponent, y, x);
-                updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ復元
+                // updateHash(CurrentHashKey, y, x, OppStone); // ハッシュ復元
                 History.pop();
 
                 minEval = min(minEval, eval);
