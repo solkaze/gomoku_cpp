@@ -13,7 +13,6 @@
 #include <stack>
 #include <atomic>
 #include <future>
-#include <immintrin.h>
 
 #include "gomoku.hpp"
 
@@ -49,7 +48,7 @@ constexpr array<array<int, 2>, 4> DIRECTIONS = {{
 }};
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 4;
+constexpr int MAX_DEPTH = 3;
 
 // スレッドの最大数
 constexpr int MAX_THREADS = 8;
@@ -122,15 +121,12 @@ int ComStone;
 // 対戦相手の石
 int OppStone;
 
-// 共有ロック
-shared_mutex TableMutex;
-
 // 履歴スタック
 thread_local stack<pair<pair<int, int>, int>> History;
 
 // ビットボード
-BitBoard ComputerBitboard{};
-BitBoard OpponentBitboard{};
+BitBoard ComputerBitboard = {0, 0, 0, 0};
+BitBoard OpponentBitboard = {0, 0, 0, 0};
 
 
 //*==================================================
@@ -234,46 +230,48 @@ bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, 
 
     for (const auto& [dy, dx] : DIRECTIONS) {
         int count = 1;
-        int openCount = 0;
+        bool frontEndOpen = false;
+        bool backEndOpen  = false;
+
         // 正方向
         for (int step = 1; step < 5; ++step) {
             int ny = y + step * dy;
             int nx = x + step * dx;
+            int openCount = 0;
 
             if (isOutOfRange(nx, ny)) break;
 
+            // 石の判定
             if (checkBit(empty, ny, nx)) { // 空白
-                if (openCount == 0) { // 飛び石の考慮
-                    ++openCount;
-                    continue;
-                } else {
+                // 最後尾か否か
+                if ((openCount == 0 && step == 3) || (openCount == 1 && step == 4) || checkBit(empty, ny - dy, nx - dx)) {
+                    frontEndOpen = true;
                     break;
+                } else if (openCount == 0) {
+                    ++openCount;
                 }
-            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
-
-            ++count;
+            } else if (checkBit(bitBoard, ny, nx)) ++count; // 自分の石
+            else break; // 相手の石の場合は切り捨て
         }
 
         // 逆方向
         for (int step = 1; step < 5; ++step) {
             int ny = y - step * dy;
             int nx = x - step * dx;
+            int openCount = 0;
 
             if (isOutOfRange(nx, ny)) break;
 
             if (checkBit(empty, ny, nx)) { // 空白
                 if (openCount == 0) { // 飛び石の考慮
                     ++openCount;
-                    continue;
-                } else {
-                    break;
+                } else if (step == 3 || checkBit(empty, ny - dy, nx - dx)) {
+                    backEndOpen = true;
                 }
-            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
-
-            ++count;
+            } else if (checkBit(bitBoard, ny, nx)) ++count; // 自分の石
         }
 
-        if (count == 3 && openCount != 0) ++threeCount;
+        if (count == 3 && frontEndOpen && backEndOpen) ++threeCount;
     }
 
     if (threeCount >= 2) return true;
@@ -518,8 +516,47 @@ void convertToBitboards(int board[][BOARD_SIZE]) {
     }
 }
 
+bool isComFour(const BitBoard& computer, const BitBoard& opponent) {
+    const BitBoard empty = ~(computer | opponent);
+
+    for (int row = 0; row < K_BOARD_SIZE; ++row) {
+        for (int col = 0; col < K_BOARD_SIZE; ++col) {
+            // コンピュータの手のみ
+            if (checkBit(computer, row, col)) {
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    int count = 1;
+                    int isSpaceCount = 0;
+
+                    for (int step = 1; step < 5; ++step) {
+                        int ny = row + step * dy;
+                        int nx = col + step * dx;
+
+                        if (isOutOfRange(nx, ny)) break;
+
+                        if (checkBit(computer, ny, nx)) ++count;
+                        else if (checkBit(empty, ny, nx)) {
+                            if (isSpaceCount == 0 || step != 4) { // 飛び石の考慮
+                                ++isSpaceCount;
+                            } else break;
+                        }
+                        else break;
+                    }
+
+                    if (!isOutOfRange(row - dy, col - dx)) {
+                        if (checkBit(empty, row - dy, col - dx)) ++isSpaceCount;
+                    }
+
+                    if (count >= 4 && isSpaceCount >= 1) return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 // 4連成立確認
-bool isFourInARow(const BitBoard& computer, const BitBoard& opponent, int& y, int& x) {
+bool isOppFour(const BitBoard& computer, const BitBoard& opponent, int& y, int& x) {
     const BitBoard empty = ~(computer | opponent);
 
     for (const auto& [dy, dx] : DIRECTIONS) {
@@ -567,11 +604,30 @@ bool isFourInARow(const BitBoard& computer, const BitBoard& opponent, int& y, in
     return false;
 }
 
-// 評価関数
-int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
-    BitBoard empty_board = ~(computer | opponent);
+int evaluateRange(const BitBoard& bitboard, const BitBoard& empty, int y, int x) {
     int score = 0;
 
+    for (const auto& [dy, dx] : DIRECTIONS) {
+    }
+
+    return score;
+}
+
+// 評価関数
+int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
+    const BitBoard empty = ~(computer | opponent);
+    int score = 0;
+
+    for (int row = 0; row < K_BOARD_SIZE; ++row) {
+        for (int col = 0; col < K_BOARD_SIZE; ++col) {
+            // コンピュータの手のみ
+            if (checkBit(computer, row, col)) {
+                score += evaluateRange(computer, empty, row, col);
+            } else if (checkBit(opponent, row, col)) {
+                score -= evaluateRange(opponent, empty, row, col);
+            }
+        }
+    }
     return score;
 }
 
@@ -653,7 +709,7 @@ pair<int, int> findBestMove(int pos_y, int pos_x) {
     mutex mtx; // 排他制御用
     atomic<int> threadCount(0); // 実行スレッド数
 
-    if (isFourInARow(ComputerBitboard, OpponentBitboard, pos_y, pos_x)) {
+    if (isOppFour(ComputerBitboard, OpponentBitboard, pos_y, pos_x) && !isComFour(ComputerBitboard, OpponentBitboard)) {
         return make_pair(pos_y, pos_x);
     }
 
