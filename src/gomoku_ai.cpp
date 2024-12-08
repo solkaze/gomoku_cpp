@@ -116,18 +116,64 @@ class BitBoard {
         int stone;
 
     public:
+        // コンストラクタ(初期化)
         BitBoard() : bitboards({0, 0, 0, 0}) {}
 
+        BitBoard(int stone) : bitboards({0, 0, 0, 0}), stone(stone) {}
+
+        inline bool isInBounds(int y, int x) const {
+            return y >= 0 && y < K_BOARD_SIZE && x >= 0 && x < K_BOARD_SIZE;
+        }
+
         inline void setBit(int y, int x) {
+            if (!isInBounds(y, x)) return;
+
             int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
             int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-            bitboards[part] |= (uint64_t)1 << shift;
+            bitboards[part] |= 1ULL << shift;
         }
 
         inline void clearBit(int y, int x) {
+            if (!isInBounds(y, x)) return;
+
             int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
             int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-            bitboards[part] &= ~((uint64_t)1 << shift);
+            bitboards[part] &= ~(1ULL << shift);
+        }
+
+        inline bool checkBit(int y, int x) const {
+            if (!isInBounds(y, x)) return false;
+
+            int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
+            int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
+            return (bitboards[part] & (1ULL << shift)) != 0;
+        }
+
+        void convertToBitboards(int board[][BOARD_SIZE]) {
+            for (int y = 0; y < K_BOARD_SIZE; ++y) {
+                for (int x = 0; x < K_BOARD_SIZE; ++x) {
+                    if (board[y][x] == stone) {
+                        setBit(y, x);
+                    }
+                }
+            }
+        }
+
+        int getStone() const {
+            return stone;
+        }
+
+        array<uint64_t, BITBOARD_PARTS> getBitboards() const {
+            return bitboards;
+        }
+
+        void testPrintBoard() const {
+            for (int row = 0; row < K_BOARD_SIZE; ++row) {
+                for (int col = 0; col < K_BOARD_SIZE; ++col) {
+                    cout << (checkBit(row, col) ? 'X' : '*');
+                }
+                cout << endl;
+            }
         }
 };
 
@@ -854,7 +900,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
         ComStone = com;
         OppStone = ComStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
 
-        if (ComStone == STONE_BLACK) {
+        if (com == STONE_BLACK) {
             *pos_y = BOARD_SIZE / 2;
             *pos_x = BOARD_SIZE / 2;
             return 0;
