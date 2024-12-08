@@ -96,7 +96,7 @@ constexpr auto SPIRAL_MOVES = generateSpiralMoves();
 
 
 //* ビット列をbitBoardとして表す
-using BitBoard = array<uint64_t, BITBOARD_PARTS>;
+using BitBoards = array<uint64_t, BITBOARD_PARTS>;
 
 
 //*==================================================
@@ -108,6 +108,27 @@ enum class GameSet {
     LOSE,
     PROHIBITED,
     CONTINUE
+};
+
+class BitBoard {
+    private:
+        array<uint64_t, BITBOARD_PARTS> bitboards;
+        int stone;
+
+    public:
+        BitBoard() : bitboards({0, 0, 0, 0}) {}
+
+        inline void setBit(int y, int x) {
+            int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
+            int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
+            bitboards[part] |= (uint64_t)1 << shift;
+        }
+
+        inline void clearBit(int y, int x) {
+            int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
+            int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
+            bitboards[part] &= ~((uint64_t)1 << shift);
+        }
 };
 
 
@@ -125,8 +146,8 @@ int OppStone;
 thread_local stack<pair<pair<int, int>, int>> History;
 
 // ビットボード
-BitBoard ComputerBitboard = {0, 0, 0, 0};
-BitBoard OpponentBitboard = {0, 0, 0, 0};
+BitBoards ComputerBitboard = {0, 0, 0, 0};
+BitBoards OpponentBitboard = {0, 0, 0, 0};
 
 
 //*==================================================
@@ -137,47 +158,47 @@ BitBoard OpponentBitboard = {0, 0, 0, 0};
 // 範囲外判定
 bool isOutOfRange(int x, int y);
 // 満杯判定
-bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitboard);
+bool isBoardFull(const BitBoards& computerBitboard, const BitBoards& opponentBitboard);
 // 勝利判定
-GameSet isWin(BitBoard& computerBitboard,
-                BitBoard& opponentBitboard,
+GameSet isWin(BitBoards& computerBitboard,
+                BitBoards& opponentBitboard,
                     stack<pair<pair<int, int>, int>>& History);
 // 特定の方向で勝利判定（前述の関数を利用）
-bool isWinDirection(int y, int x, const BitBoard& bitboard);
+bool isWinDirection(int y, int x, const BitBoards& bitboard);
 
 
 // 33禁判定
-bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone);
+bool isProhibitedThreeThree(const BitBoards& computer, const BitBoards& opponent, int y, int x, int stone);
 // 44禁判定
-bool isProhibitedFourFour(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone);
+bool isProhibitedFourFour(const BitBoards& computer, const BitBoards& opponent, int y, int x, int stone);
 // 長連禁判定
-bool isProhibitedLongLens(const BitBoard& bitboard, int y, int x);
+bool isProhibitedLongLens(const BitBoards& bitboard, int y, int x);
 
 
 // 指定位置を1にする
-inline void setBit(BitBoard& bitboard, int y, int x);
+inline void setBit(BitBoards& bitboard, int y, int x);
 // 指定位置を0にする
-inline void clearBit(BitBoard& bitboard, int y, int x);
+inline void clearBit(BitBoards& bitboard, int y, int x);
 // 指定位置のビットが1か0か
-inline bool checkBit(const BitBoard& bitboard, int y, int x);
+inline bool checkBit(const BitBoards& bitboard, int y, int x);
 // 配列をビット列に変換
 void convertToBitboards(int board[][BOARD_SIZE]);
 
 
 // AND 演算
-BitBoard operator&(const BitBoard& lhs, const BitBoard& rhs);
+BitBoards operator&(const BitBoards& lhs, const BitBoards& rhs);
 // OR 演算
-BitBoard operator|(const BitBoard& lhs, const BitBoard& rhs);
+BitBoards operator|(const BitBoards& lhs, const BitBoards& rhs);
 // XOR 演算
-BitBoard operator^(const BitBoard& lhs, const BitBoard& rhs);
+BitBoards operator^(const BitBoards& lhs, const BitBoards& rhs);
 // NOT 演算
-BitBoard operator~(const BitBoard& bitboard);
+BitBoards operator~(const BitBoards& bitboard);
 
 
 // ボード全体の評価
-int evaluateBoard(const BitBoard& comBitboard, const BitBoard& oppBitboard);
+int evaluateBoard(const BitBoards& comBitboard, const BitBoards& oppBitboard);
 // アルファ・ベータ法
-int alphaBeta(BitBoard& computer, BitBoard& opponent,
+int alphaBeta(BitBoards& computer, BitBoards& opponent,
                 int depth, int alpha, int beta, bool isMaximizingPlayer);
 // 最適解探索
 pair<int, int> findBestMove(int pos_x, int pos_y);
@@ -198,8 +219,8 @@ bool isOutOfRange(int x, int y) {
 }
 
 // 満杯判定
-bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitboard) {
-    BitBoard combined = computerBitboard | opponentBitboard;
+bool isBoardFull(const BitBoards& computerBitboard, const BitBoards& opponentBitboard) {
+    BitBoards combined = computerBitboard | opponentBitboard;
 
     // 全ビットが埋まっている（= 全てのビットが 1）場合
     for (int i = 0; i < 3; i++) {
@@ -223,10 +244,10 @@ bool isBoardFull(const BitBoard& computerBitboard, const BitBoard& opponentBitbo
 //!----------
 
 // 33禁判定
-bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone) {
+bool isProhibitedThreeThree(const BitBoards& computer, const BitBoards& opponent, int y, int x, int stone) {
     int threeCount = 0;
-    const BitBoard bitBoard = stone == ComStone ? computer : opponent;
-    const BitBoard empty = ~(computer | opponent);
+    const BitBoards bitBoard = stone == ComStone ? computer : opponent;
+    const BitBoards empty = ~(computer | opponent);
 
     for (const auto& [dy, dx] : DIRECTIONS) {
         int count = 1;
@@ -280,10 +301,10 @@ bool isProhibitedThreeThree(const BitBoard& computer, const BitBoard& opponent, 
 }
 
 // 44禁判定
-bool isProhibitedFourFour(const BitBoard& computer, const BitBoard& opponent, int y, int x, int stone) {
+bool isProhibitedFourFour(const BitBoards& computer, const BitBoards& opponent, int y, int x, int stone) {
     int fourCount = 0;
-    const BitBoard bitBoard = stone == ComStone ? computer : opponent;
-    const BitBoard empty = ~(computer | opponent);
+    const BitBoards bitBoard = stone == ComStone ? computer : opponent;
+    const BitBoards empty = ~(computer | opponent);
 
     for (const auto& [dy, dx] : DIRECTIONS) {
         int count = 1;
@@ -336,7 +357,7 @@ bool isProhibitedFourFour(const BitBoard& computer, const BitBoard& opponent, in
 }
 
 // 長連禁判定
-bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
+bool isProhibitedLongLens(const BitBoards& bitBoard, int y, int x) {
     for (const auto& [dy, dx] : DIRECTIONS) {
         int longCount = 1;
         // 正方向
@@ -368,7 +389,7 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
 //* 勝利判定
 
 // 特定の方向で勝利判定
-bool isWinDirection(int y, int x, const BitBoard& bitboard) {
+bool isWinDirection(int y, int x, const BitBoards& bitboard) {
 
     for (const auto& [dy, dx] : DIRECTIONS) {
         int count = 1;
@@ -401,8 +422,8 @@ bool isWinDirection(int y, int x, const BitBoard& bitboard) {
 }
 
 // 勝利判定
-GameSet isWin(BitBoard& computer,
-                BitBoard& opponent,
+GameSet isWin(BitBoards& computer,
+                BitBoards& opponent,
                     stack<pair<pair<int, int>, int>>& History) {
     // スタックが空の場合は処理をスキップ
     if (History.empty()) return GameSet::CONTINUE;
@@ -442,26 +463,26 @@ GameSet isWin(BitBoard& computer,
 //* BitBoard操作
 
 // 指定位置を1にする
-inline void setBit(BitBoard& bitboard, int y, int x) {
+inline void setBit(BitBoards& bitboard, int y, int x) {
     int pos = y * BOARD_SIZE + x;
     bitboard[pos / 64] |= (1ULL << (pos % 64));
 }
 
 // 指定位置を0にする
-inline void clearBit(BitBoard& bitboard, int y, int x) {
+inline void clearBit(BitBoards& bitboard, int y, int x) {
     int pos = y * BOARD_SIZE + x;
     bitboard[pos / 64] &= ~(1ULL << (pos % 64));
 }
 
 // 指定位置のビットが1か0か
-inline bool checkBit(const BitBoard& bitboard, int y, int x) {
+inline bool checkBit(const BitBoards& bitboard, int y, int x) {
     int pos = y * BOARD_SIZE + x;
     return bitboard[pos / 64] & (1ULL << (pos % 64));
 }
 
 // AND 演算
-BitBoard operator&(const BitBoard& lhs, const BitBoard& rhs) {
-    BitBoard result{};
+BitBoards operator&(const BitBoards& lhs, const BitBoards& rhs) {
+    BitBoards result{};
     for (size_t i = 0; i < lhs.size(); ++i) {
         result[i] = lhs[i] & rhs[i];
     }
@@ -469,8 +490,8 @@ BitBoard operator&(const BitBoard& lhs, const BitBoard& rhs) {
 }
 
 // OR 演算
-BitBoard operator|(const BitBoard& lhs, const BitBoard& rhs) {
-    BitBoard result{};
+BitBoards operator|(const BitBoards& lhs, const BitBoards& rhs) {
+    BitBoards result{};
     for (size_t i = 0; i < lhs.size(); ++i) {
         result[i] = lhs[i] | rhs[i];
     }
@@ -478,8 +499,8 @@ BitBoard operator|(const BitBoard& lhs, const BitBoard& rhs) {
 }
 
 // XOR 演算
-BitBoard operator^(const BitBoard& lhs, const BitBoard& rhs) {
-    BitBoard result{};
+BitBoards operator^(const BitBoards& lhs, const BitBoards& rhs) {
+    BitBoards result{};
     for (size_t i = 0; i < lhs.size(); ++i) {
         result[i] = lhs[i] ^ rhs[i];
     }
@@ -487,8 +508,8 @@ BitBoard operator^(const BitBoard& lhs, const BitBoard& rhs) {
 }
 
 // NOT 演算
-BitBoard operator~(const BitBoard& lhs) {
-    BitBoard result{};
+BitBoards operator~(const BitBoards& lhs) {
+    BitBoards result{};
     for (size_t i = 0; i < lhs.size(); ++i) {
         result[i] = ~lhs[i];
     }
@@ -516,8 +537,8 @@ void convertToBitboards(int board[][BOARD_SIZE]) {
     }
 }
 
-bool isComFour(const BitBoard& computer, const BitBoard& opponent) {
-    const BitBoard empty = ~(computer | opponent);
+bool isComFour(const BitBoards& computer, const BitBoards& opponent) {
+    const BitBoards empty = ~(computer | opponent);
 
     for (int row = 0; row < K_BOARD_SIZE; ++row) {
         for (int col = 0; col < K_BOARD_SIZE; ++col) {
@@ -556,8 +577,8 @@ bool isComFour(const BitBoard& computer, const BitBoard& opponent) {
 }
 
 // 4連成立確認
-bool isOppFour(const BitBoard& computer, const BitBoard& opponent, int& y, int& x) {
-    const BitBoard empty = ~(computer | opponent);
+bool isOppFour(const BitBoards& computer, const BitBoards& opponent, int& y, int& x) {
+    const BitBoards empty = ~(computer | opponent);
 
     for (const auto& [dy, dx] : DIRECTIONS) {
         // 正方向
@@ -604,7 +625,7 @@ bool isOppFour(const BitBoard& computer, const BitBoard& opponent, int& y, int& 
     return false;
 }
 
-int evaluateRange(const BitBoard& bitboard, const BitBoard& empty, int y, int x) {
+int evaluateRange(const BitBoards& bitboard, const BitBoards& empty, int y, int x) {
     int score = 0;
 
     for (const auto& [dy, dx] : DIRECTIONS) {
@@ -614,8 +635,8 @@ int evaluateRange(const BitBoard& bitboard, const BitBoard& empty, int y, int x)
 }
 
 // 評価関数
-int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
-    const BitBoard empty = ~(computer | opponent);
+int evaluateBoard(const BitBoards& computer, const BitBoards& opponent) {
+    const BitBoards empty = ~(computer | opponent);
     int score = 0;
 
     for (int row = 0; row < K_BOARD_SIZE; ++row) {
@@ -632,26 +653,23 @@ int evaluateBoard(const BitBoard& computer, const BitBoard& opponent) {
 }
 
 // アルファ・ベータ法
-int alphaBeta(BitBoard& computer, BitBoard& opponent,
-                int depth, int alpha, int beta, bool isMaximizingPlayer) {
+int alphaBeta(BitBoards& computer, BitBoards& opponent,
+                int depth, int alpha, int beta, bool isMaximizingPlayer, pair<int, int>& bestMove) {
 
     // 勝利判定の確認
-    switch(isWin(computer, opponent, History)) {
+    switch (isWin(computer, opponent, History)) {
         case GameSet::WIN:
-            if (depth == 0) return INF;
             return SCORE_FIVE;
         case GameSet::PROHIBITED:
-            if (depth == 0) return ComStone == STONE_BLACK ? -INF + 1 : INF;
             return ComStone == STONE_BLACK ? -SCORE_FIVE : SCORE_FIVE;
         case GameSet::LOSE:
-            if (depth == 0) return -INF + 1;
             return -SCORE_FIVE;
         case GameSet::CONTINUE:
             break;
     }
 
     // 探索の末端のとき
-    if (depth == MAX_DEPTH) {
+    if (depth == 0) {
         return evaluateBoard(computer, opponent);
     }
 
@@ -701,6 +719,36 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     }
 }
 
+std::pair<int, int> iterativeDeepening(BitBoards& computer, BitBoards& opponent,
+                                        int maxDepth, int timeLimit) {
+    std::pair<int, int> bestMove = {-1, -1};
+    int bestEval = -INF;
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    // 浅い深さから順に探索
+    for (int depth = 1; depth <= maxDepth; ++depth) {
+        int alpha = -INF, beta = INF;
+
+        // 現在の深さでアルファ・ベータ法を実行
+        std::pair<int, int> currentBestMove = {-1, -1};
+        int eval = alphaBeta(computer, opponent, depth, alpha, beta, true, currentBestMove);
+
+        // 時間制限の確認
+        auto currentTime = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() > timeLimit) {
+            break; // 時間切れなら探索を終了
+        }
+
+        // 現在の深さで得た最善手と評価値を保存
+        bestEval = eval;
+        bestMove = currentBestMove;
+    }
+
+    return bestMove;
+}
+
+
 // 最適解探索
 pair<int, int> findBestMove(int pos_y, int pos_x) {
     int bestVal = -INF;
@@ -733,8 +781,8 @@ pair<int, int> findBestMove(int pos_y, int pos_x) {
 
             // 新しいスレッドで評価を非同期実行
             futures.emplace_back(async(launch::async, [=, &bestVal, &threadCount]() {
-                BitBoard localCom = ComputerBitboard;
-                BitBoard localOpp = OpponentBitboard;
+                BitBoards localCom = ComputerBitboard;
+                BitBoards localOpp = OpponentBitboard;
 
                 // ビットボードに現在の手を設定
                 setBit(localCom, dy, dx);
@@ -775,8 +823,8 @@ pair<int, int> findBestMoveSample() {
 
     for (const auto& [y, x] : SPIRAL_MOVES) {
         if (!checkBit(ComputerBitboard, y, x) && !checkBit(OpponentBitboard, y, x)) {
-            BitBoard localCom = ComputerBitboard;
-            BitBoard localOpp = OpponentBitboard;
+            BitBoards localCom = ComputerBitboard;
+            BitBoards localOpp = OpponentBitboard;
 
             setBit(localCom, y, x);
             History.push({{y, x}, ComStone});
