@@ -113,11 +113,11 @@ enum class GameSet {
 class BitBoard {
     private:
         array<uint64_t, BITBOARD_PARTS> bitboards;
-        int stone;
+        const int stone;
 
     public:
         // コンストラクタ(初期化)
-        BitBoard() : bitboards({0, 0, 0, 0}) {}
+        BitBoard() = delete;
 
         BitBoard(int stone) : bitboards({0, 0, 0, 0}), stone(stone) {}
 
@@ -890,23 +890,20 @@ pair<int, int> findBestMoveSample() {
 
     return bestMove;
 }
-// コマ配置
+
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
-    static bool isFirst = true;
+    static BitBoard computerBitboard(com);
+    static BitBoard opponentBitboard(com == STONE_BLACK ? STONE_WHITE : STONE_BLACK);
 
     // 序盤処理の設定
-    if (isFirst) {
-        isFirst = false;
-        ComStone = com;
-        OppStone = ComStone == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
-
-        if (com == STONE_BLACK) {
-            *pos_y = BOARD_SIZE / 2;
-            *pos_x = BOARD_SIZE / 2;
-            return 0;
-        }
+    if (com == STONE_BLACK && *pos_x == -1 && *pos_y == -1) {
+        // 初手として中央を指定
+        *pos_y = BOARD_SIZE / 2;
+        *pos_x = BOARD_SIZE / 2;
+        return 0;
     }
 
+    // ビットボード変換
     convertToBitboards(board);
 
     // 配置処理
