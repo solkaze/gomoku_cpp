@@ -305,171 +305,6 @@ GameSet isWin(BitLine& computer,
     return GameSet::CONTINUE;
 }
 
-//* BitBoard操作
-
-// 指定位置を1にする
-inline void setBit(BitLine& bitboard, int y, int x) {
-    int pos = y * BOARD_SIZE + x;
-    bitboard[pos / 64] |= (1ULL << (pos % 64));
-}
-
-// 指定位置を0にする
-inline void clearBit(BitLine& bitboard, int y, int x) {
-    int pos = y * BOARD_SIZE + x;
-    bitboard[pos / 64] &= ~(1ULL << (pos % 64));
-}
-
-// 指定位置のビットが1か0か
-inline bool checkBit(const BitLine& bitboard, int y, int x) {
-    int pos = y * BOARD_SIZE + x;
-    return bitboard[pos / 64] & (1ULL << (pos % 64));
-}
-
-// AND 演算
-BitLine operator&(const BitLine& lhs, const BitLine& rhs) {
-    BitLine result{};
-    for (size_t i = 0; i < lhs.size(); ++i) {
-        result[i] = lhs[i] & rhs[i];
-    }
-    return result;
-}
-
-// OR 演算
-BitLine operator|(const BitLine& lhs, const BitLine& rhs) {
-    BitLine result{};
-    for (size_t i = 0; i < lhs.size(); ++i) {
-        result[i] = lhs[i] | rhs[i];
-    }
-    return result;
-}
-
-// XOR 演算
-BitLine operator^(const BitLine& lhs, const BitLine& rhs) {
-    BitLine result{};
-    for (size_t i = 0; i < lhs.size(); ++i) {
-        result[i] = lhs[i] ^ rhs[i];
-    }
-    return result;
-}
-
-// NOT 演算
-BitLine operator~(const BitLine& lhs) {
-    BitLine result{};
-    for (size_t i = 0; i < lhs.size(); ++i) {
-        result[i] = ~lhs[i];
-    }
-    return result;
-}
-
-// 配列をビット列に変換
-void convertToBitboards(int board[][BOARD_SIZE]) {
-    // 初期化
-    ComputerBitboard.fill(0);
-    OpponentBitboard.fill(0);
-
-    for (int y = 0; y < BOARD_SIZE; ++y) {
-        for (int x = 0; x < BOARD_SIZE; ++x) {
-            int pos = y * BOARD_SIZE + x; // 総ビット位置
-            int part = pos / 64;          // どのuint64_tに対応するか
-            int offset = pos % 64;        // そのuint64_t内のビット位置
-
-            if (board[y][x] == ComStone) { // 黒石
-                ComputerBitboard[part] |= (1ULL << offset);
-            } else if (board[y][x] == OppStone) { // 白石
-                OpponentBitboard[part] |= (1ULL << offset);
-            }
-        }
-    }
-}
-
-bool isComFour(const BitLine& computer, const BitLine& opponent) {
-    const BitLine empty = ~(computer | opponent);
-
-    for (int row = 0; row < K_BOARD_SIZE; ++row) {
-        for (int col = 0; col < K_BOARD_SIZE; ++col) {
-            // コンピュータの手のみ
-            if (checkBit(computer, row, col)) {
-                for (const auto& [dy, dx] : DIRECTIONS) {
-                    int count = 1;
-                    int isSpaceCount = 0;
-
-                    for (int step = 1; step < 5; ++step) {
-                        int ny = row + step * dy;
-                        int nx = col + step * dx;
-
-                        if (isOutOfRange(nx, ny)) break;
-
-                        if (checkBit(computer, ny, nx)) ++count;
-                        else if (checkBit(empty, ny, nx)) {
-                            if (isSpaceCount == 0 || step != 4) { // 飛び石の考慮
-                                ++isSpaceCount;
-                            } else break;
-                        }
-                        else break;
-                    }
-
-                    if (!isOutOfRange(row - dy, col - dx)) {
-                        if (checkBit(empty, row - dy, col - dx)) ++isSpaceCount;
-                    }
-
-                    if (count >= 4 && isSpaceCount >= 1) return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-// 4連成立確認
-bool isOppFour(const BitLine& computer, const BitLine& opponent, int& y, int& x) {
-    const BitLine empty = ~(computer | opponent);
-
-    for (const auto& [dy, dx] : DIRECTIONS) {
-        // 正方向
-        int count = 1;
-        bool isSpace = false;
-        int sy = y, sx = x;
-
-        for (int step = 1; step < 5; ++step) {
-            int ny = y + step * dy;
-            int nx = x + step * dx;
-
-            if (isOutOfRange(nx, ny)) break;
-            if (checkBit(empty, ny, nx)) {
-                isSpace = true;
-                sy = ny;
-                sx = nx;
-            }
-            if (!checkBit(opponent, ny, nx)) break;
-            ++count;
-        }
-
-        // 逆方向
-        for (int step = 1; step < 5; ++step) {
-            int ny = y - step * dy;
-            int nx = x - step * dx;
-
-            if (isOutOfRange(nx, ny)) break;
-            if (checkBit(empty, ny, nx)) {
-                isSpace = true;
-                sy = ny;
-                sx = nx;
-            }
-            if (!checkBit(opponent, ny, nx)) break;
-            ++count;
-        }
-
-        if (count >= 4 && isSpace) {
-            y = sy;
-            x = sx;
-            return true;
-        }
-    }
-
-    return false;
-}
-
 std::pair<int, int> iterativeDeepening(BitBoard& computer, BitBoard& opponent,
                                         int maxDepth, int timeLimit) {
     std::pair<int, int> bestMove = {-1, -1};
@@ -527,7 +362,7 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, i
     // 各手を分割して並行処理
     for (const auto& [dy, dx] : SPIRAL_MOVES) {
 
-        if (!checkBit(ComputerBitboard, dy, dx) && !checkBit(OpponentBitboard, dy, dx)) { // 空白確認
+        if (!computer.checkBit(dy, dx) && !opponent.checkBit(dy, dx)) { // 空白確認
             // スレッドの上限を維持
             if (futures.size() >= MAX_THREADS) {
                 for (auto& fut : futures) {
@@ -577,35 +412,6 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, i
     // スレッド数を出力
     cout << "実行されたスレッド数: " << threadCount.load() << endl;
     cout << bestVal << endl;
-    return bestMove;
-}
-
-// 最適解探索スレッドなし
-pair<int, int> findBestMoveSample() {
-    int bestVal = -INF;
-    pair<int, int> bestMove = {-1, -1};
-
-    for (const auto& [y, x] : SPIRAL_MOVES) {
-        if (!checkBit(ComputerBitboard, y, x) && !checkBit(OpponentBitboard, y, x)) {
-            BitLine localCom = ComputerBitboard;
-            BitLine localOpp = OpponentBitboard;
-
-            setBit(localCom, y, x);
-            History.push({{y, x}, ComStone});
-
-            int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
-
-            clearBit(localCom, y, x);
-            History.pop();
-            cout << moveVal << endl;
-
-            if (moveVal > bestVal) {
-                bestVal = moveVal;
-                bestMove = make_pair(y, x);
-            }
-        }
-    }
-
     return bestMove;
 }
 
