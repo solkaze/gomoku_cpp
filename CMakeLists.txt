@@ -14,14 +14,22 @@ set(SRC
   src/alpha_beta.cpp
   src/zobrist_hash.cpp
   src/evaluate.cpp
+  src/bit_board.cpp
   src/gomoku.cpp
   src/.libgomoku.cpp
+  src/prohibited.cpp
+  src/operater.cpp
 )
 
 set(HEADERS
   include/gomoku.hpp
   include/gomoku_ai.hpp
   include/evaluate.hpp
+  include/bit_board.hpp
+  include/alpha_beta.hpp
+  include/common.hpp
+  include/prohibited.hpp
+  include/operater.hpp
 )
 
 add_executable(gomoku ${SRC} ${HEADERS})
