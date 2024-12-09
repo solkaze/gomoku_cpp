@@ -15,6 +15,8 @@ enum class GameSet {
 // 履歴用スタック
 extern thread_local stack<pair<int, pair<int, int>>> History;
 
+GameSet isWin(BitBoard& computer, BitBoard& opponent);
+
 int evaluate(BitBoard& computer, BitBoard& opponent);
 
 #endif

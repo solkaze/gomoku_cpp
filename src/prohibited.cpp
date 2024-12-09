@@ -1,15 +1,9 @@
 #include "common.hpp"
-
+#include "prohibited.hpp"
 
 // 33禁判定
-bool isProhibitedThreeThree(const BitLine& computer, const BitLine& opponent, int y, int x, int stone) {
-}
-
-// 44禁判定
-bool isProhibitedFourFour(const BitLine& computer, const BitLine& opponent, int y, int x, int stone) {
-    int fourCount = 0;
-    const BitLine bitBoard = stone == ComStone ? computer : opponent;
-    const BitLine empty = ~(computer | opponent);
+bool isProhibitedThreeThree(const BitBoard& bitBoard, int y, int x) {
+    int threeCount = 0;
 
     for (const auto& [dy, dx] : DIRECTIONS) {
         int count = 1;
@@ -20,59 +14,58 @@ bool isProhibitedFourFour(const BitLine& computer, const BitLine& opponent, int 
             int ny = y + step * dy;
             int nx = x + step * dx;
 
-            if (isOutOfRange(nx, ny)) break;
+            if (bitBoard.isInBounds(y, x)) break; // 画面外
 
-            if (checkBit(empty, ny, nx)) { // 空白
-                if (openCount == 0) { // 飛び石の考慮
-                    ++openCount;
-                    continue;
-                } else {
-                    break;
-                }
-            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+            if (BitBoard::checkEmptyBit(y, x)) { // 空白
 
-            ++count;
+            } else if (bitBoard.checkBit(y, x)) { // 自分
+                ++count;
+            } else break; // 相手
         }
 
-        // 逆方向
+        // 負方向
         for (int step = 1; step < 5; ++step) {
             int ny = y - step * dy;
             int nx = x - step * dx;
 
-            if (isOutOfRange(nx, ny)) break;
+            if (bitBoard.isInBounds(y, x)) break; // 画面外
 
-            if (checkBit(empty, ny, nx)) { // 空白
-                if (openCount == 0) { // 飛び石の考慮
-                    ++openCount;
-                    continue;
-                } else {
-                    break;
-                }
-            } else if (!checkBit(bitBoard, ny, nx)) break; // 相手の石
+            if (BitBoard::checkEmptyBit(y, x)) { // 空白
+
+            } else if (bitBoard.checkBit(y, x)) { // 自分
+                ++count;
+            } else break; // 相手
 
             ++count;
         }
 
-        if (count == 4 && openCount != 0) ++fourCount;
+        if (count == 3) ++threeCount;
     }
 
-    if (fourCount >= 2) return true;
-
-    return false;
+    if (threeCount >= 2) return true;
+    else return false;
 }
 
-// 長連禁判定
-bool isProhibitedLongLens(const BitLine& bitBoard, int y, int x) {
+// 44禁判定
+bool isProhibitedFourFour(const BitBoard& bitBoard, int y, int x) {
+    int fourCount = 0;
+
     for (const auto& [dy, dx] : DIRECTIONS) {
-        int longCount = 1;
+        int count = 1;
+        int openCount = 0;
+
         // 正方向
         for (int step = 1; step < 5; ++step) {
             int ny = y + step * dy;
             int nx = x + step * dx;
 
-            if (isOutOfRange(nx, ny)) break;
-            if (!checkBit(bitBoard, ny, nx)) break;
-            ++longCount;
+            if (bitBoard.isInBounds(y, x)) break; // 画面外
+
+            if (BitBoard::checkEmptyBit(y, x)) { // 空白
+
+            } else if (bitBoard.checkBit(y, x)) { // 自分
+                ++count;
+            } else break; // 相手
         }
 
         // 逆方向
@@ -80,13 +73,63 @@ bool isProhibitedLongLens(const BitLine& bitBoard, int y, int x) {
             int ny = y - step * dy;
             int nx = x - step * dx;
 
-            if (isOutOfRange(nx, ny)) break;
-            if (!checkBit(bitBoard, ny, nx)) break;
-            ++longCount;
+            if (bitBoard.isInBounds(y, x)) break; // 画面外
+
+            if (BitBoard::checkEmptyBit(y, x)) { // 空白
+
+            } else if (bitBoard.checkBit(y, x)) { // 自分
+                ++count;
+            } else break; // 相手
+
+            ++count;
+        }
+
+        if (count == 4) ++fourCount;
+    }
+
+    if (fourCount >= 2) return true;
+    else return false;
+}
+
+// 長連禁判定
+bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
+    for (const auto& [dy, dx] : DIRECTIONS) {
+        int longCount = 1;
+
+        // 正方向
+        for (int step = 1; step < 6; ++step) {
+            int ny = y + step * dy;
+            int nx = x + step * dx;
+
+            if (bitBoard.isInBounds(y, x)) break;
+
+            if (BitBoard::checkEmptyBit(y, x)) break;       // 空白
+            else if (bitBoard.checkBit(y, x)) ++longCount;  // 自分
+            else break;                                     // 相手
+        }
+
+        // 負方向
+        for (int step = 1; step < 6; ++step) {
+            int ny = y - step * dy;
+            int nx = x - step * dx;
+
+            if (bitBoard.isInBounds(y, x)) break;
+
+            if (BitBoard::checkEmptyBit(y, x)) break;       // 空白
+            else if (bitBoard.checkBit(y, x)) ++longCount;  // 自分
+            else break;                                     // 相手
         }
 
         if (longCount >= 6) return true;
     }
+
+    return false;
+}
+
+bool isProhibited(const BitBoard& bitBoard, int y, int x) {
+    if (PROHIBITED_THREE_THREE && isProhibitedThreeThree(bitBoard, y, x)) return true;
+    if (PROHIBITED_FOUR_FOUR && isProhibitedFourFour(bitBoard, y, x)) return true;
+    if (PROHIBITED_LONG_LENS && isProhibitedLongLens(bitBoard, y, x)) return true;
 
     return false;
 }
