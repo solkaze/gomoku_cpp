@@ -11,12 +11,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(SRC
   src/gomoku_ai.cpp
+  src/alpha_beta.cpp
+  src/zobrist_hash.cpp
+  src/evaluate.cpp
   src/gomoku.cpp
   src/.libgomoku.cpp
 )
 
 set(HEADERS
   include/gomoku.hpp
+  include/gomoku_ai.hpp
+  include/evaluate.hpp
 )
 
 add_executable(gomoku ${SRC} ${HEADERS})

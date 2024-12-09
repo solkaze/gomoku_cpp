@@ -112,7 +112,7 @@ enum class GameSet {
 
 class BitBoard {
     private:
-        array<uint64_t, BITBOARD_PARTS> bitboards;
+        BitLine bitboards;
         const int stone;
 
     public:
@@ -767,7 +767,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     }
 }
 
-std::pair<int, int> iterativeDeepening(BitLine& computer, BitLine& opponent,
+std::pair<int, int> iterativeDeepening(BitBoard& computer, BitBoard& opponent,
                                         int maxDepth, int timeLimit) {
     std::pair<int, int> bestMove = {-1, -1};
     int bestEval = -INF;
@@ -798,7 +798,7 @@ std::pair<int, int> iterativeDeepening(BitLine& computer, BitLine& opponent,
 
 
 // 最適解探索
-pair<int, int> findBestMove(BitBoard computer, BitBoard opponent, int pos_y, int pos_x) {
+pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, int pos_x) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
     vector<future<pair<int, pair<int, int>>>> futures;
@@ -807,6 +807,18 @@ pair<int, int> findBestMove(BitBoard computer, BitBoard opponent, int pos_y, int
 
     if (isOppFour(ComputerBitboard, OpponentBitboard, pos_y, pos_x) && !isComFour(ComputerBitboard, OpponentBitboard)) {
         return make_pair(pos_y, pos_x);
+    }
+
+    for (int depth = 1; depth <= MAX_DEPTH; ++depth) {
+        int alpha = -INF, beta = INF;
+
+        // 現在の深さでアルファ・ベータ法を実行
+        std::pair<int, int> currentBestMove = {-1, -1};
+        int eval = alphaBeta(computer, opponent, depth, alpha, beta, true, currentBestMove);
+
+        // 現在の深さで得た最善手と評価値を保存
+        bestVal = eval;
+        bestMove = currentBestMove;
     }
 
     // 各手を分割して並行処理
