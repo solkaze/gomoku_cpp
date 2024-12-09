@@ -35,8 +35,6 @@ set(HEADERS
 add_executable(gomoku ${SRC} ${HEADERS})
 target_include_directories(gomoku PUBLIC include)
 
-add_definitions(-DDATA_PATH="${CMAKE_SOURCE_DIR}/data/")
-
 target_compile_options(gomoku PRIVATE -Wall -Wextra -g3 -O3)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=core-avx2")
