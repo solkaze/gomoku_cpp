@@ -1,5 +1,5 @@
-#ifndef PROHIBITED
-#define PROHIBITED
+#ifndef PROHIBITED_HPP
+#define PROHIBITED_HPP
 
 // 禁じ手
 constexpr bool PROHIBITED_THREE_THREE  = true;

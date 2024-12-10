@@ -2,7 +2,10 @@
 #include "prohibited.hpp"
 #include "evaluate.hpp"
 
+thread_local stack<pair<int, pair<int, int>>> History;
+
 bool fiveLow(const BitBoard& bitBoard, int y, int x) {
+    return false;
 }
 
 GameSet isWin(const BitBoard& computer, const BitBoard& opponent) {
@@ -19,4 +22,8 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent) {
 
 
     return GameSet::CONTINUE;
+}
+
+int evaluate(BitBoard& computer, BitBoard& opponent) {
+    return 0;
 }

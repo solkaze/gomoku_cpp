@@ -1,5 +1,5 @@
-#ifndef EVALUATE
-#define EVALUATE
+#ifndef EVALUATE_HPP
+#define EVALUATE_HPP
 
 #include <thread>
 #include <stack>
@@ -9,13 +9,13 @@ enum class GameSet {
     WIN,
     LOSE,
     PROHIBITED,
-    CONTINUE,
+    CONTINUE
 };
 
 // 履歴用スタック
 extern thread_local stack<pair<int, pair<int, int>>> History;
 
-GameSet isWin(BitBoard& computer, BitBoard& opponent);
+GameSet isWin(const BitBoard& computer, const BitBoard& opponent);
 
 int evaluate(BitBoard& computer, BitBoard& opponent);
 

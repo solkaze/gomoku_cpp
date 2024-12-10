@@ -50,35 +50,6 @@ bool isBoardFull(const BitLine& computerBitboard, const BitLine& opponentBitboar
     return true;  // 全てのビットが埋まっている
 }
 
-std::pair<int, int> iterativeDeepening(BitBoard& computer, BitBoard& opponent,
-                                        int maxDepth, int timeLimit) {
-    std::pair<int, int> bestMove = {-1, -1};
-    int bestEval = -INF;
-
-    auto startTime = std::chrono::steady_clock::now();
-
-    // 浅い深さから順に探索
-    for (int depth = 1; depth <= maxDepth; ++depth) {
-        int alpha = -INF, beta = INF;
-
-        // 現在の深さでアルファ・ベータ法を実行
-        std::pair<int, int> currentBestMove = {-1, -1};
-        int eval = alphaBeta(computer, opponent, depth, alpha, beta, true, currentBestMove);
-
-        // 時間制限の確認
-        auto currentTime = std::chrono::steady_clock::now();
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() > timeLimit) {
-            break; // 時間切れなら探索を終了
-        }
-
-        // 現在の深さで得た最善手と評価値を保存
-        bestEval = eval;
-        bestMove = currentBestMove;
-    }
-
-    return bestMove;
-}
-
 
 // 最適解探索
 pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, int pos_x) {
@@ -88,22 +59,9 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, i
     mutex mtx; // 排他制御用
     atomic<int> threadCount(0); // 実行スレッド数
 
-    if (isOppFour(ComputerBitboard, OpponentBitboard, pos_y, pos_x) && !isComFour(ComputerBitboard, OpponentBitboard)) {
-        return make_pair(pos_y, pos_x);
-    }
-
-    for (int depth = 1; depth <= MAX_DEPTH; ++depth) {
-        int alpha = -INF, beta = INF;
-
-        // 現在の深さでアルファ・ベータ法を実行
-        std::pair<int, int> currentBestMove = {-1, -1};
-        int eval = alphaBeta(computer, opponent, depth, alpha, beta, true, currentBestMove);
-
-        // 現在の深さで得た最善手と評価値を保存
-        bestVal = eval;
-        bestMove = currentBestMove;
-    }
-
+    // if (isOppFour(ComputerBitboard, OpponentBitboard, pos_y, pos_x) && !isComFour(ComputerBitboard, OpponentBitboard)) {
+    //     return make_pair(pos_y, pos_x);
+    // }
     // 各手を分割して並行処理
     for (const auto& [dy, dx] : SPIRAL_MOVES) {
 
