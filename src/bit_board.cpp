@@ -8,36 +8,6 @@ BitLine BitBoard::emptyBoard = []() {
     return board;
 }();
 
-inline bool BitBoard::isInBounds(int y, int x){
-    return y >= 0 && y < BOARD_SIZE && x >= 0 && x < BOARD_SIZE;
-}
-
-inline void BitBoard::setBit(int y, int x) {
-    if (!isInBounds(y, x) || checkBit(y, x)) return;
-
-    int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
-    int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-    bitboard[part] |= 1ULL << shift;
-    setEmptyBit(y, x);
-}
-
-inline void BitBoard::removeBit(int y, int x) {
-    if (!isInBounds(y, x) || !checkBit(y, x)) return;
-
-    int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
-    int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-    bitboard[part] &= ~(1ULL << shift);
-    removeEmptyBit(y, x);
-}
-
-inline bool BitBoard::checkBit(int y, int x) const {
-    if (!isInBounds(y, x)) return false;
-
-    int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
-    int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-    return (bitboard[part] & (1ULL << shift)) != 0;
-}
-
 void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
     for (int y = 0; y < K_BOARD_SIZE; ++y) {
         for (int x = 0; x < K_BOARD_SIZE; ++x) {
@@ -46,34 +16,6 @@ void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
             }
         }
     }
-}
-
-int BitBoard::getStone() const {
-    return stone;
-}
-
-void BitBoard::setEmptyBit(int y, int x) {
-    if (!isInBounds(y, x)) return;
-
-    int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
-    int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-    emptyBoard[part] &= ~(1ULL << shift);
-}
-
-void BitBoard::removeEmptyBit(int y, int x) {
-    if (!isInBounds(y, x)) return;
-
-    int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
-    int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-    emptyBoard[part] |= 1ULL << shift;
-}
-
-bool BitBoard::checkEmptyBit(int y, int x) {
-    if (!isInBounds(y, x)) return false;
-
-    int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
-    int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
-    return (emptyBoard[part] & (1ULL << shift)) != 0;
 }
 
 void BitBoard::testPrintBoard() const {

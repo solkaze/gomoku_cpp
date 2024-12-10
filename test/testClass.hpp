@@ -1,12 +1,17 @@
-#ifndef BITBOARD_AI
-#define BITBOARD_AI
+#ifndef TESTCLASS_HPP
+#define TESTCLASS_HPP
 
+#include <iostream>
 #include <array>
 #include <cstdint>
-#include <iostream>
 
-#include "gomoku_ai.hpp"
-#include "gomoku.hpp"
+using namespace std;
+
+
+const int BOARD_SIZE = 15;
+const int K_BOARD_SIZE = 15;
+const int BITBOARD_PARTS = 4;
+const int SEGMENT_SIZE = 64;
 
 using BitLine = array<uint64_t, BITBOARD_PARTS>;
 
