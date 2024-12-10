@@ -15,7 +15,7 @@ class BitBoard {
         // ビットボード
         BitLine bitBoard;
         // 空のボード
-        static BitLine emptyBoard;
+        thread_local static BitLine emptyBoard;
         // 石の色
         const int stone;
 

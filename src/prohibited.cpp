@@ -18,6 +18,7 @@ constexpr array<uint8_t, 4> BASE_4MASK = {
 
 // 33禁判定
 bool isProhibitedThreeThree(const BitBoard& bitBoard, int y, int x) {
+    return false;
 }
 
 // 44禁判定

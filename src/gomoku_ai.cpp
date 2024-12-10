@@ -1,14 +1,10 @@
 #include <numeric>
-#include <unordered_map>
-#include <vector>
-#include <algorithm>
 #include <limits>
 #include <random>
 #include <chrono>
 #include <thread>
 #include <mutex>
 #include <shared_mutex>
-#include <stack>
 #include <atomic>
 #include <future>
 
@@ -21,8 +17,6 @@
 //*    関数実装
 //*==================================================
 
-
-//* 判定関数
 
 // 範囲外判定
 bool isOutOfRange(int x, int y) {
@@ -65,7 +59,7 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, i
     // 各手を分割して並行処理
     for (const auto& [dy, dx] : SPIRAL_MOVES) {
 
-        if (!computer.checkBit(dy, dx) && !opponent.checkBit(dy, dx)) { // 空白確認
+        if (BitBoard::checkEmptyBit(dy, dx)) { // 空白確認
             // スレッドの上限を維持
             if (futures.size() >= MAX_THREADS) {
                 for (auto& fut : futures) {
@@ -90,7 +84,7 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, i
                 History.push({localCom.getStone(), {dy, dx}});
 
                 // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localCom, localOpp, 0, bestVal, INF, false);
+                int moveVal = alphaBeta(localCom, localOpp, 1, bestVal, INF, false);
 
                 History.pop();
 
@@ -118,6 +112,32 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, i
     return bestMove;
 }
 
+// スレッドなしバージョン
+pair<int, int> findBestMoveNoThread(BitBoard& computer, BitBoard& opponent, int pos_y, int pos_x) {
+    int bestVal = -INF;
+    pair<int, int> bestMove = {-1, -1};
+
+    for (const auto& [dy, dx] : SPIRAL_MOVES) {
+        if (BitBoard::checkEmptyBit(dy, dx)) { // 空白確認
+            BitBoard localCom = computer;
+            BitBoard localOpp = opponent;
+
+            // ビットボードに現在の手を設定
+            localCom.setBit(dy, dx);
+            History.push({localCom.getStone(), {dy, dx}});
+            // アルファ・ベータ探索を実行
+            int moveVal = alphaBeta(localCom, localOpp, 1, bestVal, INF, false);
+            History.pop();
+
+            if (moveVal > bestVal) {
+                bestVal = moveVal;
+                bestMove = make_pair(dy, dx);
+            }
+        }
+    }
+    return bestMove;
+}
+
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     static BitBoard computerBitboard(com);
     static BitBoard opponentBitboard(com == STONE_BLACK ? STONE_WHITE : STONE_BLACK);
@@ -135,8 +155,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     opponentBitboard.convertToBitboards(board);
 
     // 配置処理
-    pair<int, int> bestMove = findBestMove(computerBitboard, opponentBitboard, *pos_y, *pos_x);
-
+    pair<int, int> bestMove = findBestMoveNoThread(computerBitboard, opponentBitboard, *pos_y, *pos_x);
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
 
