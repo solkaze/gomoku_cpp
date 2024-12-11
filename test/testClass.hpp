@@ -89,7 +89,7 @@ class BitBoard {
         void convertToBitboards(int board[][BOARD_SIZE]);
 
         // 特定のビット列を抜き出す
-        int putOutBitLine(const int y, const int x ,const int dy, const int dx,
+        pair<int, int> putOutBitLine(const int y, const int x ,const int dy, const int dx,
                                             const int start, const int end) const;
 
         // テスト用表示
