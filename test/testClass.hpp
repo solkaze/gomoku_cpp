@@ -20,7 +20,7 @@ class BitBoard {
         // ビットボード
         BitLine bitBoard;
         // 空のボード
-        static BitLine emptyBoard;
+        static thread_local BitLine emptyBoard;
         // 石の色
         const int stone;
 
@@ -98,5 +98,12 @@ class BitBoard {
         // テスト用空白マス表示
         static void testPrintEmptyBoard();
 };
+
+constexpr array<array<int, 2>, 4> DIRECTIONS = {{
+    {0,  1},
+    {1,  0},
+    {1,  1},
+    {1, -1}
+}};
 
 #endif

@@ -21,7 +21,7 @@ void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
 void BitBoard::testPrintBoard() const {
     for (int row = 0; row < K_BOARD_SIZE; ++row) {
         for (int col = 0; col < K_BOARD_SIZE; ++col) {
-            cout << (checkBit(row, col) ? 'X' : '*');
+            cout << (checkBit(row, col) ? 'X' : '*') << " ";
         }
         cout << endl;
     }
@@ -30,7 +30,7 @@ void BitBoard::testPrintBoard() const {
 void BitBoard::testPrintEmptyBoard() {
     for (int row = 0; row < K_BOARD_SIZE; ++row) {
         for (int col = 0; col < K_BOARD_SIZE; ++col) {
-            cout << (checkEmptyBit(row, col) ? 'X' : '*');
+            cout << (checkEmptyBit(row, col) ? 'X' : '*') << " ";
         }
         cout << endl;
     }

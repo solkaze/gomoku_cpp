@@ -19,6 +19,7 @@ set(SRC
   src/.libgomoku.cpp
   src/prohibited.cpp
   src/operater.cpp
+  src/csv_data.cpp
 )
 
 set(HEADERS
@@ -30,6 +31,7 @@ set(HEADERS
   include/common.hpp
   include/prohibited.hpp
   include/operater.hpp
+  include/csv_data.hpp
 )
 
 add_executable(gomoku ${SRC} ${HEADERS})
@@ -41,3 +43,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=core-avx2")
 
 # インクルードディレクトリを指定
 target_include_directories(gomoku PRIVATE ${Curses_INCLUDE_DIRS} include)
+
+# データフォルダのパス
+set(DATA_DIR ${CMAKE_SOURCE_DIR}/data)
+
+add_custom_command(
+    TARGET gomoku POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:gomoku>/data
+)

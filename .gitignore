@@ -5,3 +5,5 @@ build/*
 .vscode/
 
 sample/
+
+test/*.o
