@@ -79,7 +79,7 @@ int inputPutPos(int board[][BOARD_SIZE], int which, int com) {
                 continue;
             }
             if(checkOutPos(pos_x, pos_y) &&
-               board[pos_y][pos_x] == STONE_SPACE) {
+                board[pos_y][pos_x] == STONE_SPACE) {
                 break;
             } else {
                 printf("不正な入力です\n> ");

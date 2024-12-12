@@ -46,7 +46,7 @@ bool isBoardFull(const BitLine& computerBitboard, const BitLine& opponentBitboar
 
 
 // 最適解探索
-pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, int pos_x) {
+pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
     vector<future<pair<int, pair<int, int>>>> futures;
@@ -113,7 +113,7 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent, int pos_y, i
 }
 
 // スレッドなしバージョン
-pair<int, int> findBestMoveNoThread(BitBoard& computer, BitBoard& opponent, int pos_y, int pos_x) {
+pair<int, int> findBestMoveNoThread(BitBoard& computer, BitBoard& opponent) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
 
@@ -126,7 +126,9 @@ pair<int, int> findBestMoveNoThread(BitBoard& computer, BitBoard& opponent, int 
             localCom.setBit(dy, dx);
             History.push({localCom.getStone(), {dy, dx}});
             // アルファ・ベータ探索を実行
-            int moveVal = alphaBeta(localCom, localOpp, 1, bestVal, INF, false);
+            int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, false);
+
+            localCom.removeBit(dy, dx);
             History.pop();
 
             if (moveVal > bestVal) {
@@ -139,8 +141,8 @@ pair<int, int> findBestMoveNoThread(BitBoard& computer, BitBoard& opponent, int 
 }
 
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
-    static BitBoard computerBitboard(com);
-    static BitBoard opponentBitboard(com == STONE_BLACK ? STONE_WHITE : STONE_BLACK);
+    BitBoard computerBitboard(com);
+    BitBoard opponentBitboard(com == STONE_BLACK ? STONE_WHITE : STONE_BLACK);
 
     // 序盤処理の設定
     if (com == STONE_BLACK && *pos_x == -1 && *pos_y == -1) {
@@ -155,9 +157,15 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     opponentBitboard.convertToBitboards(board);
 
     // 配置処理
-    pair<int, int> bestMove = findBestMoveNoThread(computerBitboard, opponentBitboard, *pos_y, *pos_x);
+    pair<int, int> bestMove = findBestMove(computerBitboard, opponentBitboard);
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
+
+    computerBitboard.testPrintBoard();
+    cout << endl;
+    opponentBitboard.testPrintBoard();
+    cout << endl;
+    BitBoard::testPrintEmptyBoard();
 
     cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )" << endl;
     return 0;

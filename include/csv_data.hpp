@@ -9,13 +9,13 @@
 class CSVData {
 
     private:
-        vector<vector<int>> data;
+        vector<array<int, 3>> data;
 
     public:
         explicit CSVData(const string& filename);
 
         // データを取得する
-        const vector<vector<int>>& getData() const {
+        const vector<array<int, 3>>& getData() const {
             return data;
         }
 

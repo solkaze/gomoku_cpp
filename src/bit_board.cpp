@@ -2,7 +2,7 @@
 #include "gomoku.hpp"
 #include "gomoku_ai.hpp"
 
-BitLine BitBoard::emptyBoard = []() {
+thread_local BitLine BitBoard::emptyBoard = []() {
     BitLine board = {};
     board.fill(0xFFFFFFFFFFFFFFFF);
     return board;
@@ -16,6 +16,35 @@ void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
             }
         }
     }
+}
+
+pair<int, int> BitBoard::putOutBitLine(const int y, const int x, const int dy, const int dx,
+                                        const int start, const int end) const {
+    if (start > end) return {-1, -1};
+
+    int bitLine = 0;
+    int emptyLine = 0;
+
+    for (int step = start; step <= end; ++step) {
+        int ny = y + dy * step;
+        int nx = x + dx * step;
+
+        // 範囲外チェックを条件分岐内で行う
+        if (ny < 0 || ny >= BOARD_SIZE || nx < 0 || nx >= BOARD_SIZE) continue;
+
+        // ビットボードのチェック（インライン化されたヘルパーを使用）
+        int index = (ny * K_BOARD_SIZE + nx) / SEGMENT_SIZE;
+        int shift = (ny * K_BOARD_SIZE + nx) % SEGMENT_SIZE;
+        uint64_t mask = (1ULL << shift);
+
+        if (bitBoard[index] & mask) {
+            bitLine |= (1 << (step - start));
+        } else if ((*emptyBoard)[index] & mask) {
+            emptyLine |= (1 << (step - start));
+        }
+    }
+
+    return {bitLine, emptyLine};
 }
 
 void BitBoard::testPrintBoard() const {

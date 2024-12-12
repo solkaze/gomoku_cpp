@@ -17,6 +17,6 @@ extern thread_local stack<pair<int, pair<int, int>>> History;
 
 GameSet isWin(const BitBoard& computer, const BitBoard& opponent);
 
-int evaluate(BitBoard& computer, BitBoard& opponent);
+int evaluate(const BitBoard& computer, const BitBoard& opponent);
 
 #endif

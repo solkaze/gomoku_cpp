@@ -6,6 +6,7 @@
 
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
             int depth, int alpha, int beta, bool isMaximizingPlayer) {
+
     switch(isWin(computer, opponent)) {
         case GameSet::WIN:
             return INF;

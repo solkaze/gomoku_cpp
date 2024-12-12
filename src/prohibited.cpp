@@ -2,26 +2,29 @@
 
 #include "common.hpp"
 #include "prohibited.hpp"
-
-constexpr array<uint8_t, 3> BASE_3MASK = {
-    0b01110,
-    0b010110,
-    0b011010,
-};
-
-constexpr array<uint8_t, 4> BASE_4MASK = {
-    0b011110,
-    0b0101110,
-    0b0110110,
-    0b0111010,
-};
+#include "csv_data.hpp"
 
 // 33禁判定
+CSVData threeOpenCSV("data/three_open_mask.csv");
+CSVData fourOpenCSV("data/four_open_mask.csv");
+
+const auto THREE_OPEN_MASK = threeOpenCSV.getData();
+const auto FOUR_OPEN_MASK = fourOpenCSV.getData();
+
 bool isProhibitedThreeThree(const BitBoard& bitBoard, int y, int x) {
+    int threeCount = 0;
 
     for (const auto& [dy, dx] : DIRECTIONS) {
-        
+        auto [line, empty] = bitBoard.putOutBitLine(y, x, dy, dx, -4, 4);
+
+        for (const auto& mask : THREE_OPEN_MASK) {
+            int sarchBitLine = line & mask[2];
+            int emptyBitLine = empty & mask[2];
+
+            if (sarchBitLine == mask[0] && emptyBitLine == mask[1]) ++threeCount;
+        }
     }
+    if (threeCount >= 2) return true;
     return false;
 }
 
@@ -30,44 +33,17 @@ bool isProhibitedFourFour(const BitBoard& bitBoard, int y, int x) {
     int fourCount = 0;
 
     for (const auto& [dy, dx] : DIRECTIONS) {
-        int count = 1;
-        int openCount = 0;
+        auto [line, empty] = bitBoard.putOutBitLine(y, x, dy, dx, -5, 5);
 
-        // 正方向
-        for (int step = 1; step < 5; ++step) {
-            int ny = y + step * dy;
-            int nx = x + step * dx;
+        for (const auto& mask : FOUR_OPEN_MASK) {
+            int sarchBitLine = line & mask[2];
+            int emptyBitLine = empty & mask[2];
 
-            if (bitBoard.isInBounds(y, x)) break; // 画面外
-
-            if (BitBoard::checkEmptyBit(y, x)) { // 空白
-
-            } else if (bitBoard.checkBit(y, x)) { // 自分
-                ++count;
-            } else break; // 相手
+            if (sarchBitLine == mask[0] && emptyBitLine == mask[1]) ++fourCount;
         }
-
-        // 逆方向
-        for (int step = 1; step < 5; ++step) {
-            int ny = y - step * dy;
-            int nx = x - step * dx;
-
-            if (bitBoard.isInBounds(y, x)) break; // 画面外
-
-            if (BitBoard::checkEmptyBit(y, x)) { // 空白
-
-            } else if (bitBoard.checkBit(y, x)) { // 自分
-                ++count;
-            } else break; // 相手
-
-            ++count;
-        }
-
-        if (count == 4) ++fourCount;
     }
-
     if (fourCount >= 2) return true;
-    else return false;
+    return false;
 }
 
 // 長連禁判定
@@ -80,10 +56,10 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
             int ny = y + step * dy;
             int nx = x + step * dx;
 
-            if (bitBoard.isInBounds(y, x)) break;
+            if (bitBoard.isInBounds(ny, nx)) break;
 
-            if (BitBoard::checkEmptyBit(y, x)) break;       // 空白
-            else if (bitBoard.checkBit(y, x)) ++longCount;  // 自分
+            if (BitBoard::checkEmptyBit(ny, nx)) break;       // 空白
+            else if (bitBoard.checkBit(ny, nx)) ++longCount;  // 自分
             else break;                                     // 相手
         }
 
@@ -92,10 +68,10 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
             int ny = y - step * dy;
             int nx = x - step * dx;
 
-            if (bitBoard.isInBounds(y, x)) break;
+            if (bitBoard.isInBounds(ny, nx)) break;
 
-            if (BitBoard::checkEmptyBit(y, x)) break;       // 空白
-            else if (bitBoard.checkBit(y, x)) ++longCount;  // 自分
+            if (BitBoard::checkEmptyBit(ny, nx)) break;       // 空白
+            else if (bitBoard.checkBit(ny, nx)) ++longCount;  // 自分
             else break;                                     // 相手
         }
 

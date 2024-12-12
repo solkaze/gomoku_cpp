@@ -8,10 +8,10 @@
 int main() {
     int board[BOARD_SIZE][BOARD_SIZE] = {0};
 
-    board[2][2] = 1;
-    board[5][5] = 1;
-    board[4][2] = 1;
-    board[5][1] = 1;
+    board[1][1] = 1;
+    board[1][3] = 1;
+    board[1][6] = 1;
+    // board[3][4] = 1;
 
     BitBoard bitBoard(1);
     BitBoard subBoard(2);
@@ -32,6 +32,14 @@ int main() {
     } else {
         cout << "33禁ではありません" << endl;
     }
+
+    if (isProhibitedFourFour(bitBoard, y, x)) {
+        cout << "44禁です" << endl;
+    } else {
+        cout << "44禁ではありません" << endl;
+    }
+
+    bitBoard.testPrintBoard();
 
     return 0;
 }
