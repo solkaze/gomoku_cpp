@@ -27,7 +27,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
         int maxEval = -INF;
 
         for (const auto& [y, x] : SPIRAL_MOVES) {
-            if (BitBoard::checkEmptyBit(y, x)) {
+            if (computer.checkEmptyBit(y, x)) {
 
                 computer.setBit(y, x);
                 History.push({computer.getStone(), {y, x}});
@@ -49,7 +49,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
         int minEval = INF;
 
         for (const auto& [y, x] : SPIRAL_MOVES) {
-            if (BitBoard::checkEmptyBit(y, x)) {
+            if (opponent.checkEmptyBit(y, x)) {
 
                 opponent.setBit(y, x);
                 History.push({opponent.getStone(), {y, x}});

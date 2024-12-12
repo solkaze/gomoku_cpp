@@ -58,7 +58,7 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
 
             if (bitBoard.isInBounds(ny, nx)) break;
 
-            if (BitBoard::checkEmptyBit(ny, nx)) break;       // 空白
+            if (bitBoard.checkEmptyBit(ny, nx)) break;       // 空白
             else if (bitBoard.checkBit(ny, nx)) ++longCount;  // 自分
             else break;                                     // 相手
         }
@@ -70,7 +70,7 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
 
             if (bitBoard.isInBounds(ny, nx)) break;
 
-            if (BitBoard::checkEmptyBit(ny, nx)) break;       // 空白
+            if (bitBoard.checkEmptyBit(ny, nx)) break;       // 空白
             else if (bitBoard.checkBit(ny, nx)) ++longCount;  // 自分
             else break;                                     // 相手
         }

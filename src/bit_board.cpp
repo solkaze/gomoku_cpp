@@ -2,11 +2,6 @@
 #include "gomoku.hpp"
 #include "gomoku_ai.hpp"
 
-thread_local BitLine BitBoard::emptyBoard = []() {
-    BitLine board = {};
-    board.fill(0xFFFFFFFFFFFFFFFF);
-    return board;
-}();
 
 void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
     for (int y = 0; y < K_BOARD_SIZE; ++y) {
@@ -56,7 +51,7 @@ void BitBoard::testPrintBoard() const {
     }
 }
 
-void BitBoard::testPrintEmptyBoard() {
+void BitBoard::testPrintEmptyBoard() const {
     for (int row = 0; row < K_BOARD_SIZE; ++row) {
         for (int col = 0; col < K_BOARD_SIZE; ++col) {
             cout << (checkEmptyBit(row, col) ? 'X' : '*') << " ";

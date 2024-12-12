@@ -70,7 +70,7 @@ class BitBoard {
         };
 
         // 空白を調べる
-        bool checkEmptyBit(const int y, const int x) {
+        bool checkEmptyBit(const int y, const int x) const {
             if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE) return false;
             int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
             int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
@@ -89,7 +89,7 @@ class BitBoard {
         void testPrintBoard() const;
 
         // テスト用空白マス表示
-        void testPrintEmptyBoard();
+        void testPrintEmptyBoard() const;
 };
 
 #endif

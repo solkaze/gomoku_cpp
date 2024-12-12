@@ -7,6 +7,7 @@
 #include <shared_mutex>
 #include <atomic>
 #include <future>
+#include <memory>
 
 #include "common.hpp"
 #include "prohibited.hpp"
@@ -46,7 +47,7 @@ bool isBoardFull(const BitLine& computerBitboard, const BitLine& opponentBitboar
 
 
 // 最適解探索
-pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent) {
+pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
     vector<future<pair<int, pair<int, int>>>> futures;
@@ -59,7 +60,7 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent) {
     // 各手を分割して並行処理
     for (const auto& [dy, dx] : SPIRAL_MOVES) {
 
-        if (BitBoard::checkEmptyBit(dy, dx)) { // 空白確認
+        if (board[dy][dx] == STONE_SPACE) { // 空白確認
             // スレッドの上限を維持
             if (futures.size() >= MAX_THREADS) {
                 for (auto& fut : futures) {
@@ -76,8 +77,14 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent) {
 
             // 新しいスレッドで評価を非同期実行
             futures.emplace_back(async(launch::async, [=, &bestVal, &threadCount]() {
-                BitBoard localCom = computer;
-                BitBoard localOpp = opponent;
+                auto emptyBoard = std::make_shared<BitLine>();
+                std::fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
+
+                BitBoard localCom(comStone, emptyBoard);
+                BitBoard localOpp(oppStone, emptyBoard);
+
+                localCom.convertToBitboards(board);
+                localOpp.convertToBitboards(board);
 
                 // ビットボードに現在の手を設定
                 localCom.setBit(dy, dx);
@@ -113,18 +120,25 @@ pair<int, int> findBestMove(BitBoard& computer, BitBoard& opponent) {
 }
 
 // スレッドなしバージョン
-pair<int, int> findBestMoveNoThread(BitBoard& computer, BitBoard& opponent) {
+pair<int, int> findBestMoveNoThread(int board[][BOARD_SIZE], int comStone, int oppStone) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
 
     for (const auto& [dy, dx] : SPIRAL_MOVES) {
-        if (BitBoard::checkEmptyBit(dy, dx)) { // 空白確認
-            BitBoard localCom = computer;
-            BitBoard localOpp = opponent;
+        if (board[dy][dx] == STONE_SPACE) { // 空白確認
+            auto emptyBoard = make_shared<BitLine>();
+            fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
+
+            BitBoard localCom(comStone, emptyBoard);
+            BitBoard localOpp(oppStone, emptyBoard);
+
+            localCom.convertToBitboards(board);
+            localOpp.convertToBitboards(board);
 
             // ビットボードに現在の手を設定
             localCom.setBit(dy, dx);
             History.push({localCom.getStone(), {dy, dx}});
+
             // アルファ・ベータ探索を実行
             int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, false);
 
@@ -141,8 +155,6 @@ pair<int, int> findBestMoveNoThread(BitBoard& computer, BitBoard& opponent) {
 }
 
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
-    BitBoard computerBitboard(com);
-    BitBoard opponentBitboard(com == STONE_BLACK ? STONE_WHITE : STONE_BLACK);
 
     // 序盤処理の設定
     if (com == STONE_BLACK && *pos_x == -1 && *pos_y == -1) {
@@ -152,20 +164,14 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
         return 0;
     }
 
-    // ビットボード変換
-    computerBitboard.convertToBitboards(board);
-    opponentBitboard.convertToBitboards(board);
+    static int comStone = com;
+    static int oppStone = com == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
 
     // 配置処理
-    pair<int, int> bestMove = findBestMove(computerBitboard, opponentBitboard);
+    pair<int, int> bestMove = findBestMoveNoThread(board, comStone, oppStone);
+
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
-
-    computerBitboard.testPrintBoard();
-    cout << endl;
-    opponentBitboard.testPrintBoard();
-    cout << endl;
-    BitBoard::testPrintEmptyBoard();
 
     cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )" << endl;
     return 0;
