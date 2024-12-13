@@ -3,3 +3,7 @@ bin/
 build/*
 
 .vscode/
+
+sample/
+
+test/*.o

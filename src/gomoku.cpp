@@ -34,8 +34,6 @@ int main() {
     int which_turn;
     int com;
 
-    // ハッシュリストの初期化
-    initZobristTable();
 
     // 初期処理
     if(gameInit(board, c33Board, c44Board,  &which_turn, &com) == 1) return 1;
@@ -81,7 +79,7 @@ int inputPutPos(int board[][BOARD_SIZE], int which, int com) {
                 continue;
             }
             if(checkOutPos(pos_x, pos_y) &&
-               board[pos_y][pos_x] == STONE_SPACE) {
+                board[pos_y][pos_x] == STONE_SPACE) {
                 break;
             } else {
                 printf("不正な入力です\n> ");

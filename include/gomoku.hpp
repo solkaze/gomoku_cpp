@@ -14,9 +14,6 @@
 #define YOKO 5    // ─
 #define RIGT 9    // ／
 
-// Zobristハッシュの初期化
-void initZobristTable();
-
 extern int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Board[][BOARD_SIZE]);
 
 extern int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
