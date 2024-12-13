@@ -17,7 +17,7 @@ set(SRC
   src/bit_board.cpp
   src/gomoku.cpp
   src/.libgomoku.cpp
-  src/prohibited.cpp
+  src/prohibit.cpp
   src/operater.cpp
   src/csv_data.cpp
 )
@@ -29,7 +29,7 @@ set(HEADERS
   include/bit_board.hpp
   include/alpha_beta.hpp
   include/common.hpp
-  include/prohibited.hpp
+  include/prohibit.hpp
   include/operater.hpp
   include/csv_data.hpp
 )

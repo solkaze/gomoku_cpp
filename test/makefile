@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -g -Wall -Wextra
 
-test: testmove.o testClass.o testCsv.o testProhibit.o
+test: testmove.o testClass.o testCsv.o testProhibit.o testEvaluate.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 testClass.o: testClass.cpp testClass.hpp
@@ -15,6 +15,9 @@ testProhibit.o: testProhibit.cpp testProhibit.hpp
 
 testmove.o: testmove.cpp
 	$(CC) $(CFLAGS) -c -o $@ testmove.cpp
+
+testEvaluate.o: testEvaluate.cpp
+	$(CC) $(CFLAGS) -c -o $@ testEvaluate.cpp
 
 clean:
 	$(RM) *.o

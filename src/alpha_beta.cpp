@@ -12,12 +12,21 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             return INF;
             break;
         case GameSet::LOSE:
-        case GameSet::PROHIBITED:
             return -INF + 1;
+            break;
+        case GameSet::PROHIBITED:
+            return computer.getStone() == STONE_BLACK ? -SCORE_FIVE : SCORE_FIVE;
             break;
         case GameSet::CONTINUE:
             break;
     }
+
+    cout << "コンピュータ" << endl;
+    computer.testPrintBoard();
+    cout << endl << "相手" << endl;
+    opponent.testPrintBoard();
+
+    this_thread::sleep_for(chrono::milliseconds(200));
 
     if (depth == 0) {
         return evaluate(computer, opponent);

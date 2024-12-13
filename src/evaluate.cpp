@@ -1,5 +1,5 @@
 #include "common.hpp"
-#include "prohibited.hpp"
+#include "prohibit.hpp"
 #include "evaluate.hpp"
 #include "csv_data.hpp"
 
@@ -25,20 +25,40 @@ bool fiveLow(const BitBoard& bitBoard, const int y, const int x) {
 
 GameSet isWin(const BitBoard& computer, const BitBoard& opponent) {
     auto [stoneType, put] = History.top();
+    int y = put.first;
+    int x = put.second;
 
     if (stoneType == computer.getStone()) {
-        if (fiveLow(computer, put.first, put.second)) return GameSet::WIN;
-        if (isProhibited(computer,put.first, put.second)) return GameSet::LOSE;
+        if (fiveLow(computer, y, x))      return GameSet::WIN;
+        if (isProhibited(computer, y, x)) return GameSet::LOSE;
 
     } else if (stoneType == opponent.getStone()) {
-        if (fiveLow(opponent, put.first, put.second)) return GameSet::LOSE;
-        if (isProhibited(opponent, put.first, put.second)) return GameSet::WIN;
+        if (fiveLow(opponent, y, x))      return GameSet::LOSE;
+        if (isProhibited(opponent, y, x)) return GameSet::WIN;
     }
-
 
     return GameSet::CONTINUE;
 }
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent) {
-    return 0;
+    int score = 0;
+
+    for (int y = 0; y < BOARD_SIZE; ++y) {
+        for (int x = 0; x < BOARD_SIZE; ++x) {
+            if (computer.checkBit(y, x)) {
+
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -1, 5);
+                }
+
+            } else if (opponent.checkBit(y, x)) {
+
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -1, 5);
+                }
+
+            }
+        }
+    }
+    return score;
 }

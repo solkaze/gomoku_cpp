@@ -10,7 +10,7 @@
 #include <memory>
 
 #include "common.hpp"
-#include "prohibited.hpp"
+#include "prohibit.hpp"
 #include "evaluate.hpp"
 #include "alpha_beta.hpp"
 

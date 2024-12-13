@@ -1,12 +1,12 @@
 #include <array>
 
 #include "common.hpp"
-#include "prohibited.hpp"
+#include "prohibit.hpp"
 #include "csv_data.hpp"
 
 // 33禁判定
-CSVData threeOpenCSV("data/three_open_mask.csv");
-CSVData fourOpenCSV("data/four_open_mask.csv");
+CSVData threeOpenCSV("data/three_prohibit_mask.csv");
+CSVData fourOpenCSV("data/four_prohibit_mask.csv");
 
 const auto THREE_OPEN_MASK = threeOpenCSV.getData();
 const auto FOUR_OPEN_MASK = fourOpenCSV.getData();
