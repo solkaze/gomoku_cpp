@@ -21,13 +21,6 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             break;
     }
 
-    cout << "コンピュータ" << endl;
-    computer.testPrintBoard();
-    cout << endl << "相手" << endl;
-    opponent.testPrintBoard();
-
-    this_thread::sleep_for(chrono::milliseconds(200));
-
     if (depth == 0) {
         return evaluate(computer, opponent);
     }

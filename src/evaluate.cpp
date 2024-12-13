@@ -6,8 +6,16 @@
 thread_local stack<pair<int, pair<int, int>>> History;
 
 CSVData fiveLowMASK("data/five_mask.csv");
+CSVData fourOpenMask("data/four_open_mask.csv");
+CSVData fourCloseMask("data/four_close_mask.csv");
+CSVData threeOpenMask("data/three_open_mask.csv");
+CSVData threeCloseMask("data/three_close_mask.csv");
 
 const auto FIVE_LOW_MASK = fiveLowMASK.getData();
+const auto FOUR_OPEN_MASK = fourOpenMask.getData();
+const auto FOUR_CLOSE_MASK = fourCloseMask.getData();
+const auto THREE_OPEN_MASK = threeOpenMask.getData();
+const auto THREE_CLOSE_MASK = threeCloseMask.getData();
 
 bool fiveLow(const BitBoard& bitBoard, const int y, const int x) {
 
@@ -49,12 +57,68 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -1, 5);
+
+                    for (const auto& mask : FOUR_OPEN_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score += SCORE_OPEN_FOUR;
+                    }
+
+                    for (const auto& mask : FOUR_CLOSE_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score += SCORE_CLOSE_FOUR;
+                    }
+
+                    for (const auto& mask : THREE_OPEN_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score += SCORE_OPEN_THREE;
+                    }
+
+                    for (const auto& mask : THREE_CLOSE_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score += SCORE_CLOSE_THREE;
+                    }
                 }
 
             } else if (opponent.checkBit(y, x)) {
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -1, 5);
+
+                    for (const auto& mask : FOUR_OPEN_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score -= SCORE_OPEN_FOUR;
+                    }
+
+                    for (const auto& mask : FOUR_CLOSE_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score -= SCORE_CLOSE_FOUR;
+                    }
+
+                    for (const auto& mask : THREE_OPEN_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score -= SCORE_OPEN_THREE;
+                    }
+
+                    for (const auto& mask : THREE_CLOSE_MASK) {
+                        int sarchLine = line & mask[2];
+                        int emptyLine = empty & mask[2];
+
+                        if (sarchLine == mask[0] && emptyLine == mask[1]) score -= SCORE_CLOSE_THREE;
+                    }
                 }
 
             }
