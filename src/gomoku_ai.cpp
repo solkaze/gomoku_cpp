@@ -231,9 +231,11 @@ pair<int, int> findBestMoveNoThread(int board[][BOARD_SIZE], int comStone, int o
 }
 
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
+    static bool first = true;
 
     // 序盤処理の設定
-    if (com == STONE_BLACK && *pos_x == -1 && *pos_y == -1) {
+    if (com == STONE_BLACK && first) {
+        first = false;
         // 初手として中央を指定
         *pos_y = BOARD_SIZE / 2;
         *pos_x = BOARD_SIZE / 2;

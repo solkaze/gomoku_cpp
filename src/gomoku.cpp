@@ -63,7 +63,7 @@ int main() {
 // 置く場所入力
 //-------------------------------------------------
 int inputPutPos(int board[][BOARD_SIZE], int which, int com) {
-    static int pos_x = -1, pos_y = -1;
+    int pos_x = -1, pos_y = -1;
     char buf[10];
 
     if(which == com) {

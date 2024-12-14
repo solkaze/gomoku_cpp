@@ -6,16 +6,22 @@
 #include <fstream>
 #include "common.hpp"
 
+struct RowData {
+    int stones;
+    int empty;
+    int range;
+};
+
 class CSVData {
 
     private:
-        vector<array<int, 3>> data;
+        vector<RowData> data;
 
     public:
         explicit CSVData(const string& filename);
 
         // データを取得する
-        const vector<array<int, 3>>& getData() const {
+        const vector<RowData>& getData() const {
             return data;
         }
 

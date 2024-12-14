@@ -33,12 +33,12 @@ class BitBoard {
         // 石の色を取得
         inline int getStone() const {
             return stone;
-        };
+        }
 
         // 範囲外確認
         static bool isInBounds(const int y, const int x) {
             return y >= 0 && y < BOARD_SIZE && x >= 0 && x < BOARD_SIZE;
-        };
+        }
 
         // コマを置く
         inline void setBit(const int y, const int x) {
@@ -48,7 +48,7 @@ class BitBoard {
 
             bitBoard[part] |= 1ULL << shift;
             (*emptyBoard)[part] &= ~(1ULL << shift);
-        };
+        }
 
         // コマを取る
         inline void removeBit(const int y, const int x) {
@@ -58,7 +58,7 @@ class BitBoard {
 
             bitBoard[part] &= ~(1ULL << shift);
             (*emptyBoard)[part] |= 1ULL << shift;
-        };
+        }
 
         // コマを調べる
         inline bool checkBit(const int y, const int x) const {
@@ -67,7 +67,7 @@ class BitBoard {
             int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
 
             return bitBoard[part] & (1ULL << shift);
-        };
+        }
 
         // 空白を調べる
         bool checkEmptyBit(const int y, const int x) const {
@@ -76,7 +76,7 @@ class BitBoard {
             int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
 
             return (*emptyBoard)[part] & (1ULL << shift);
-        };
+        }
 
         // ２次元配列からビットボードへ
         void convertToBitboards(int board[][BOARD_SIZE]);
