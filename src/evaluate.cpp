@@ -1,3 +1,5 @@
+#include <stack>
+
 #include "common.hpp"
 #include "prohibit.hpp"
 #include "evaluate.hpp"
@@ -86,7 +88,6 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     // 2連両端空き
                     score += evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_OPEN_TWO);
                 }
-
             } else if (opponent.checkBit(y, x)) {
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
@@ -102,7 +103,6 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     // 2連両端空き
                     score -= evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_OPEN_TWO);
                 }
-
             }
         }
     }
