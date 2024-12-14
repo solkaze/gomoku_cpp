@@ -10,7 +10,7 @@ using namespace std;
 constexpr int INF = numeric_limits<int>::max();
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 3;
+constexpr int MAX_DEPTH = 4;
 
 // スレッドの最大数
 constexpr int MAX_THREADS = 8;

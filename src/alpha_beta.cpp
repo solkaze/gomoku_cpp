@@ -9,10 +9,10 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
 
     switch(isWin(computer, opponent)) {
         case GameSet::WIN:
-            return INF;
+            return SCORE_FIVE;
             break;
         case GameSet::LOSE:
-            return -INF + 1;
+            return -SCORE_FIVE;
             break;
         case GameSet::PROHIBITED:
             return computer.getStone() == STONE_BLACK ? -SCORE_FIVE : SCORE_FIVE;
