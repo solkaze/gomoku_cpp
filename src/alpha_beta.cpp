@@ -5,7 +5,12 @@
 #include "evaluate.hpp"
 
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
-            int depth, int alpha, int beta, bool isMaximizingPlayer) {
+            int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer) {
+
+    int cachedEval;
+    if (localTT.retrieveEntry(depth, alpha, beta, cachedEval, isMaximizingPlayer)) {
+        return cachedEval;
+    }
 
     switch(isWin(computer, opponent)) {
         case GameSet::WIN:
@@ -32,19 +37,26 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (computer.checkEmptyBit(y, x)) {
 
                 computer.setBit(y, x);
+                localTT.updateHashKey(computer.getStone(), y, x);
                 History.push({computer.getStone(), {y, x}});
 
-                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, false);
+                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, localTT, false);
 
                 computer.removeBit(y, x);
+                localTT.updateHashKey(computer.getStone(), y, x);
                 History.pop();
 
                 maxEval = max(maxEval, eval);
                 alpha = max(alpha, eval);
 
-                if (beta <= alpha) break;
+                if (beta <= alpha) {
+                    localTT.storeEntry(depth, maxEval, BoundType::LOWER_BOUND);
+                    break;
+                }
             }
         }
+
+        localTT.storeEntry(depth, maxEval, BoundType::EXACT);
 
         return maxEval;
     } else {
@@ -54,19 +66,26 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             if (opponent.checkEmptyBit(y, x)) {
 
                 opponent.setBit(y, x);
+                localTT.updateHashKey(opponent.getStone(), y, x);
                 History.push({opponent.getStone(), {y, x}});
 
-                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, true);
+                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, localTT, true);
 
                 opponent.removeBit(y, x);
+                localTT.updateHashKey(opponent.getStone(), y, x);
                 History.pop();
 
                 minEval = min(minEval, eval);
                 beta = min(beta, eval);
 
-                if (beta <= alpha) break;
+                if (beta <= alpha) {
+                    localTT.storeEntry(depth, minEval, BoundType::UPPER_BOUND);
+                    break;
+                }
             }
         }
+
+        localTT.storeEntry(depth, minEval, BoundType::EXACT);
 
         return minEval;
     }

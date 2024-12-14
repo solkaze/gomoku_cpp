@@ -14,6 +14,7 @@
 #include "prohibit.hpp"
 #include "evaluate.hpp"
 #include "alpha_beta.hpp"
+#include "zobrist_hash.hpp"
 
 //*==================================================
 //*    関数実装
@@ -59,12 +60,16 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 localCom.convertToBitboards(board);
                 localOpp.convertToBitboards(board);
 
+                TransportationTable localTT;
+
                 // ビットボードに現在の手を設定
                 localCom.setBit(dy, dx);
+                localTT.updateHashKey(localCom.getStone(), dy, dx);
                 History.push({localCom.getStone(), {dy, dx}});
 
+
                 // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, false);
+                int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, localTT, false);
 
                 History.pop();
 
@@ -165,12 +170,15 @@ pair<int, int> findBestMoveDefault(int board[][BOARD_SIZE], int comStone, int op
                 localCom.convertToBitboards(board);
                 localOpp.convertToBitboards(board);
 
+                TransportationTable localTT;
+
                 // ビットボードに現在の手を設定
                 localCom.setBit(dy, dx);
+                localTT.updateHashKey(localCom.getStone(), dy, dx);
                 History.push({localCom.getStone(), {dy, dx}});
 
                 // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, false);
+                int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, localTT, false);
 
                 History.pop();
 
@@ -211,12 +219,15 @@ pair<int, int> findBestMoveNoThread(int board[][BOARD_SIZE], int comStone, int o
             localCom.convertToBitboards(board);
             localOpp.convertToBitboards(board);
 
+            TransportationTable localTT;
+
             // ビットボードに現在の手を設定
             localCom.setBit(dy, dx);
+            localTT.updateHashKey(localCom.getStone(), dy, dx);
             History.push({localCom.getStone(), {dy, dx}});
 
             // アルファ・ベータ探索を実行
-            int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, false);
+            int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, localTT, false);
 
             localCom.removeBit(dy, dx);
             History.pop();
