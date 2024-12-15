@@ -36,19 +36,28 @@ int main() {
     // board[10][7] = 1;
     // board[11][7] = 1;
 
-    board[3][11] = 1;
-    board[4][10] = 1;
-    board[5][9] = 1;
-    board[6][8] = 1;
-    board[7][7] = 2;
+    board[7][7] = 1;
+    board[7][8] = 1;
+    board[8][5] = 1;
+    board[8][6] = 1;
+    board[8][7] = 1;
+    board[8][8] = 1;
+    board[9][6] = 1;
+
+    board[5][5] = 2;
+    board[6][4] = 2;
+    board[6][5] = 2;
+    board[7][5] = 2;
+    board[8][4] = 2;
+    board[8][9] = 2;
+    board[10][5] = 2;
     // board[9][5] = 1;
     // board[10][4] = 1;
     // board[11][3] = 1;
-
-    BitBoard bitBoard(1);
-    BitBoard subBoard(2);
-    bitBoard.convertToBitboards(board);
-    subBoard.convertToBitboards(board);
+    auto emptyBoard = make_shared<BitLine>();
+    fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
+    BitBoard bitBoard(1, board, emptyBoard);
+    BitBoard subBoard(2, board, emptyBoard);
     cout << endl;
     cout << "自分用ボード" << endl;
     bitBoard.testPrintBoard();

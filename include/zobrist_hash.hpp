@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include <unordered_map>
 #include <mutex>
+#include <shared_mutex>
 
 enum BoundType {
     EXACT,
@@ -22,16 +23,31 @@ class TransportationTable {
 
         static array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> zobristTable; // Zobristハッシュテーブル
 
+        static unordered_map<uint64_t, TTEntry> globalTable;
+        static shared_mutex globalTableMutex; // 読み取り用のロック
+
+        static void initializeZobristTable();
+
         unordered_map<uint64_t, TTEntry> table;
 
         uint64_t currentHashKey;
 
-        static void initializeZobristTable();
-
     public:
-        TransportationTable() : table{}, currentHashKey(0) {
+        TransportationTable() = delete;
+
+        TransportationTable(int board[][BOARD_SIZE]) : table{}, currentHashKey(0) {
             static once_flag flag;
             call_once(flag, initializeZobristTable);
+
+            // ハッシュキーの初期化
+            for (int y = 0; y < BOARD_SIZE; ++y) {
+                for (int x = 0; x < BOARD_SIZE; ++x) {
+                    int stone = board[y][x]; // 石の種類（0: 空, 1: 黒, 2: 白）
+                    if (stone != 0) {
+                        currentHashKey ^= zobristTable[y][x][stone - 1];
+                    }
+                }
+            }
         }
 
         void updateHashKey(int player, const int y, const int x) {
@@ -48,7 +64,9 @@ class TransportationTable {
 
         bool retrieveEntry(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
 
-        void mergeTo(TransportationTable& globalTT) const;
+        bool retrieveEntryFromGlobal(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
+
+        void mergeTo() const;
 
         void clear() {
             table.clear();
@@ -56,6 +74,10 @@ class TransportationTable {
 
         int getTableSize() const {
             return table.size();
+        }
+
+        static int getGlobalTableSize() {
+            return globalTable.size();
         }
 };
 

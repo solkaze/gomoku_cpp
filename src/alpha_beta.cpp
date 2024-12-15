@@ -5,28 +5,12 @@
 #include "alpha_beta.hpp"
 #include "evaluate.hpp"
 
-TransportationTable globalTT;
-
 shared_mutex globalTTMutex;
-
-int retrieveFromGlobalTT(int depth, int alpha, int beta, int& cachedEval, bool isMaximizingPlayer) {
-    shared_lock<shared_mutex> lock(globalTTMutex); // 共有ロックを取得
-    if (globalTT.retrieveEntry(depth, alpha, beta, cachedEval, isMaximizingPlayer)) {
-        return cachedEval;
-    }
-    return INF; // キャッシュがヒットしない場合
-}
 
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
             int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer) {
 
     int cachedEval;
-    if (retrieveFromGlobalTT(depth, alpha, beta, cachedEval, isMaximizingPlayer) != INF) {
-        cout << "hit" << endl;
-        return cachedEval;
-    }
-
-
     if (localTT.retrieveEntry(depth, alpha, beta, cachedEval, isMaximizingPlayer)) {
         return cachedEval;
     }

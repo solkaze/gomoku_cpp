@@ -30,6 +30,14 @@ class BitBoard {
             stone(stone)
         {}
 
+        explicit BitBoard(int stone, int board[][BOARD_SIZE], shared_ptr<BitLine> sharedEmptyBoard) :
+            bitBoard({0, 0, 0, 0}),
+            emptyBoard(move(sharedEmptyBoard)),
+            stone(stone)
+        {
+            convertToBitboards(board);
+        }
+
         // 石の色を取得
         inline int getStone() const {
             return stone;

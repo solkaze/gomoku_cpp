@@ -17,7 +17,6 @@ set(SRC
   src/evaluate.cpp
   src/gomoku_ai.cpp
   src/gomoku.cpp
-  src/operater.cpp
   src/prohibit.cpp
   src/zobrist_hash.cpp
 )
@@ -30,7 +29,6 @@ set(HEADERS
   include/evaluate.hpp
   include/gomoku_ai.hpp
   include/gomoku.hpp
-  include/operater.hpp
   include/prohibit.hpp
   include/zobrist_hash.hpp
 )

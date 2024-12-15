@@ -42,11 +42,11 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent) {
 
     if (stoneType == computer.getStone()) {
         if (fiveLow(computer, y, x))      return GameSet::WIN;
-        if (isProhibited(computer, y, x)) return GameSet::LOSE;
+        if (stoneType == STONE_BLACK && isProhibited(computer, y, x)) return GameSet::PROHIBITED;
 
     } else if (stoneType == opponent.getStone()) {
         if (fiveLow(opponent, y, x))      return GameSet::LOSE;
-        if (isProhibited(opponent, y, x)) return GameSet::WIN;
+        if (stoneType == STONE_BLACK && isProhibited(opponent, y, x)) return GameSet::PROHIBITED;
     }
 
     return GameSet::CONTINUE;
