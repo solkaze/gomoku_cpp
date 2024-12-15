@@ -4,8 +4,6 @@
 #include "common.hpp"
 #include "zobrist_hash.hpp"
 
-extern TransportationTable globalTT;
-
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
             int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer);
 

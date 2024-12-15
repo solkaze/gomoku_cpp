@@ -27,8 +27,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     const vector<pair<int, int>>& moves,
     int depth,
     int previousBestVal,
-    pair<int, int> previousBestMove,
-    TransportationTable& globalTT) {
+    pair<int, int> previousBestMove) {
 
     pair<int, int> bestMove = previousBestMove;
     int bestVal = previousBestVal;
@@ -58,13 +57,10 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 auto emptyBoard = make_shared<BitLine>();
                 fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
 
-                BitBoard localCom(comStone, emptyBoard);
-                BitBoard localOpp(oppStone, emptyBoard);
+                BitBoard localCom(comStone, board, emptyBoard);
+                BitBoard localOpp(oppStone, board, emptyBoard);
 
-                localCom.convertToBitboards(board);
-                localOpp.convertToBitboards(board);
-
-                TransportationTable localTT; // 各スレッドで独自のTTを作成
+                TransportationTable localTT(board); // 各スレッドで独自のTTを作成
 
                 // ビットボードに現在の手を設定
                 localCom.setBit(dy, dx);
@@ -99,7 +95,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
 
     // 全ローカルTTをグローバルTTにマージ
     for (const auto& localTT : localTTs) {
-        localTT.mergeTo(globalTT);
+        localTT.mergeTo();
     }
 
     return {bestMove, bestVal};
@@ -126,7 +122,7 @@ pair<pair<int, int>, int> iterativeDeepening(
         }
 
         // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, sortedMoves, depth, bestVal, bestMove, globalTT);
+        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, sortedMoves, depth, bestVal, bestMove);
 
         // 深さごとの結果を表示（デバッグ用）
         cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
@@ -175,13 +171,10 @@ pair<int, int> findBestMoveDefault(int board[][BOARD_SIZE], int comStone, int op
                 auto emptyBoard = make_shared<BitLine>();
                 fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
 
-                BitBoard localCom(comStone, emptyBoard);
-                BitBoard localOpp(oppStone, emptyBoard);
+                BitBoard localCom(comStone, board, emptyBoard);
+                BitBoard localOpp(oppStone, board, emptyBoard);
 
-                localCom.convertToBitboards(board);
-                localOpp.convertToBitboards(board);
-
-                TransportationTable localTT;
+                TransportationTable localTT(board);
 
                 // ビットボードに現在の手を設定
                 localCom.setBit(dy, dx);
@@ -224,13 +217,10 @@ pair<int, int> findBestMoveNoThread(int board[][BOARD_SIZE], int comStone, int o
             auto emptyBoard = make_shared<BitLine>();
             fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
 
-            BitBoard localCom(comStone, emptyBoard);
-            BitBoard localOpp(oppStone, emptyBoard);
+            BitBoard localCom(comStone, board, emptyBoard);
+            BitBoard localOpp(oppStone, board, emptyBoard);
 
-            localCom.convertToBitboards(board);
-            localOpp.convertToBitboards(board);
-
-            TransportationTable localTT;
+            TransportationTable localTT(board);
 
             // ビットボードに現在の手を設定
             localCom.setBit(dy, dx);
@@ -277,7 +267,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
 
     cout << "処理時間: " << duration.count() << " ms" << endl;
 
-    cout << "トランスポーテーションテーブル格納数: " << globalTT.getTableSize() << endl;
+    cout << "トランスポーテーションテーブル格納数: " << TransportationTable::getGlobalTableSize() << endl;
 
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
