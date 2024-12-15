@@ -3,6 +3,7 @@
 
 #include "common.hpp"
 #include <unordered_map>
+#include <mutex>
 
 enum BoundType {
     EXACT,
@@ -19,17 +20,18 @@ struct TTEntry {
 class TransportationTable {
     private:
 
-        array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> zobristTable; // Zobristハッシュテーブル
+        static array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> zobristTable; // Zobristハッシュテーブル
 
         unordered_map<uint64_t, TTEntry> table;
 
         uint64_t currentHashKey;
 
-        void initializeZobristTable();
+        static void initializeZobristTable();
 
     public:
-        TransportationTable() : zobristTable{}, table{}, currentHashKey(0) {
-            initializeZobristTable();
+        TransportationTable() : table{}, currentHashKey(0) {
+            static once_flag flag;
+            call_once(flag, initializeZobristTable);
         }
 
         void updateHashKey(int player, const int y, const int x) {
@@ -50,6 +52,10 @@ class TransportationTable {
 
         void clear() {
             table.clear();
+        }
+
+        int getTableSize() const {
+            return table.size();
         }
 };
 

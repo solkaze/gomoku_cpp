@@ -2,6 +2,8 @@
 
 #include "zobrist_hash.hpp"
 
+array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> TransportationTable::zobristTable;
+
 void TransportationTable::initializeZobristTable() {
     mt19937_64 rng(random_device{}());
     uniform_int_distribution<uint64_t> dist;
@@ -13,6 +15,7 @@ void TransportationTable::initializeZobristTable() {
             }
         }
     }
+    cout << "初期化完了:\tZobristHashTable" << endl;
 }
 
 bool TransportationTable::retrieveEntry(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const {

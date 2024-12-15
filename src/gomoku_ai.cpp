@@ -27,12 +27,16 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     const vector<pair<int, int>>& moves,
     int depth,
     int previousBestVal,
-    pair<int, int> previousBestMove) {
+    pair<int, int> previousBestMove,
+    TransportationTable& globalTT) {
 
     pair<int, int> bestMove = previousBestMove;
     int bestVal = previousBestVal;
     vector<future<pair<int, pair<int, int>>>> futures;
     mutex mtx; // 排他制御用
+
+    vector<TransportationTable> localTTs; // ローカルTTのリスト
+    localTTs.reserve(moves.size());
 
     for (const auto& [dy, dx] : moves) {
         if (board[dy][dx] == STONE_SPACE) { // 空白確認
@@ -50,7 +54,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
             }
 
             // 非同期タスクで評価を実行
-            futures.emplace_back(async(launch::async, [=, &bestVal]() {
+            futures.emplace_back(async(launch::async, [=, &bestVal, &localTTs, &mtx]() {
                 auto emptyBoard = make_shared<BitLine>();
                 fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
 
@@ -60,18 +64,23 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 localCom.convertToBitboards(board);
                 localOpp.convertToBitboards(board);
 
-                TransportationTable localTT;
+                TransportationTable localTT; // 各スレッドで独自のTTを作成
 
                 // ビットボードに現在の手を設定
                 localCom.setBit(dy, dx);
                 localTT.updateHashKey(localCom.getStone(), dy, dx);
                 History.push({localCom.getStone(), {dy, dx}});
 
-
                 // アルファ・ベータ探索を実行
                 int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, localTT, false);
 
                 History.pop();
+
+                // ローカルTTをリストに保存
+                {
+                    lock_guard<mutex> lock(mtx);
+                    localTTs.push_back(move(localTT));
+                }
 
                 return make_pair(moveVal, make_pair(dy, dx));
             }));
@@ -88,10 +97,15 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
         }
     }
 
+    // 全ローカルTTをグローバルTTにマージ
+    for (const auto& localTT : localTTs) {
+        localTT.mergeTo(globalTT);
+    }
+
     return {bestMove, bestVal};
 }
 
-
+// 反復深化探索
 pair<pair<int, int>, int> iterativeDeepening(
     int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
     pair<int, int> bestMove = {-1, -1}; // 最適手
@@ -112,7 +126,7 @@ pair<pair<int, int>, int> iterativeDeepening(
         }
 
         // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, sortedMoves, depth, bestVal, bestMove);
+        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, sortedMoves, depth, bestVal, bestMove, globalTT);
 
         // 深さごとの結果を表示（デバッグ用）
         cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
@@ -122,7 +136,7 @@ pair<pair<int, int>, int> iterativeDeepening(
     return {bestMove, bestVal};
 }
 
-
+// 最適解探索（使用していない）
 pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone) {
     // 反復深化探索を呼び出して最適手を取得
     auto [bestMove, bestVal] = iterativeDeepening(board, comStone, oppStone, MAX_DEPTH);
@@ -131,16 +145,13 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone)
     return bestMove;
 }
 
-// 最適解探索
+// 最適解探索（使用していない）
 pair<int, int> findBestMoveDefault(int board[][BOARD_SIZE], int comStone, int oppStone) {
     int bestVal = -INF;
     pair<int, int> bestMove = {-1, -1};
     vector<future<pair<int, pair<int, int>>>> futures;
     mutex mtx; // 排他制御用
 
-    // if (isOppFour(ComputerBitboard, OpponentBitboard, pos_y, pos_x) && !isComFour(ComputerBitboard, OpponentBitboard)) {
-    //     return make_pair(pos_y, pos_x);
-    // }
     // 各手を分割して並行処理
     for (const auto& [dy, dx] : SPIRAL_MOVES) {
 
@@ -199,7 +210,7 @@ pair<int, int> findBestMoveDefault(int board[][BOARD_SIZE], int comStone, int op
     }
 
 
-    cout << "最適手: " << bestMove.first << ", " << bestMove.second << endl << bestVal << endl;
+    cout << "\n最適手: " << bestMove.first << ", " << bestMove.second << endl << bestVal << endl;
     return bestMove;
 }
 
@@ -253,15 +264,24 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
         return 0;
     }
 
+    auto start = chrono::high_resolution_clock::now();
+
     static int comStone = com;
     static int oppStone = com == STONE_BLACK ? STONE_WHITE : STONE_BLACK;
 
     // 配置処理
     pair<int, int> bestMove = findBestMove(board, comStone, oppStone);
 
+    auto end = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+
+    cout << "処理時間: " << duration.count() << " ms" << endl;
+
+    cout << "トランスポーテーションテーブル格納数: " << globalTT.getTableSize() << endl;
+
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
 
-    cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )" << endl;
+    cout << "\n置いた位置:( " << *pos_x << ", " << *pos_y << " )" << endl;
     return 0;
 }
