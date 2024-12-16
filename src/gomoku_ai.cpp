@@ -44,6 +44,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 for (auto& fut : futures) {
                     auto [moveVal, pos] = fut.get();
                     lock_guard<mutex> lock(mtx);
+                    cout << pos.first << ", " << pos.second << ": " << moveVal << endl;
                     if (moveVal > bestVal) {
                         bestVal = moveVal;
                         bestMove = pos;
@@ -87,6 +88,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     for (auto& fut : futures) {
         auto [moveVal, pos] = fut.get();
         lock_guard<mutex> lock(mtx);
+        cout << pos.first << ", " << pos.second << ": " << moveVal << endl;
         if (moveVal > bestVal) {
             bestVal = moveVal;
             bestMove = pos;
@@ -117,7 +119,9 @@ pair<pair<int, int>, int> iterativeDeepening(
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
             sort(sortedMoves.begin(), sortedMoves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
-                return (a == bestMove) > (b == bestMove);
+                int distA = abs(a.first - bestMove.first) + abs(a.second - bestMove.second);
+                int distB = abs(b.first - bestMove.first) + abs(b.second - bestMove.second);
+                return distA < distB;
             });
         }
 
@@ -136,8 +140,10 @@ pair<pair<int, int>, int> iterativeDeepening(
 pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone) {
     // 反復深化探索を呼び出して最適手を取得
     auto [bestMove, bestVal] = iterativeDeepening(board, comStone, oppStone, MAX_DEPTH);
+    cout << "----------\n";
     cout << "最終的な最適手: " << bestMove.second << ", " << bestMove.first << endl;
     cout << "評価値: " << bestVal << endl;
+    cout << "----------\n";
     return bestMove;
 }
 
@@ -264,14 +270,15 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
 
     auto end = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+    cout << "----------\n";
+    cout << "処理時間: " << duration.count() << " ms\n";
+    cout << "----------\n";
 
-    cout << "処理時間: " << duration.count() << " ms" << endl;
-
-    cout << "トランスポーテーションテーブル格納数: " << TransportationTable::getGlobalTableSize() << endl;
 
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
-
-    cout << "\n置いた位置:( " << *pos_x << ", " << *pos_y << " )" << endl;
+    cout << "\n==========\n";
+    cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )\n";
+    cout << "==========" << endl;
     return 0;
 }
