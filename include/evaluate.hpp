@@ -8,7 +8,6 @@
 enum class GameSet {
     WIN,
     LOSE,
-    PROHIBITED,
     CONTINUE
 };
 

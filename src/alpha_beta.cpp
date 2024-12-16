@@ -22,9 +22,6 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
         case GameSet::LOSE:
             return -SCORE_FIVE;
             break;
-        case GameSet::PROHIBITED:
-            return computer.getStone() == STONE_BLACK ? -SCORE_FIVE : SCORE_FIVE;
-            break;
         case GameSet::CONTINUE:
             break;
     }
