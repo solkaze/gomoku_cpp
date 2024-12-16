@@ -1,10 +1,41 @@
 #include <iostream>
 #include <bitset>
+#include <iomanip>
 
 #include "testClass.hpp"
 #include "testCsv.hpp"
 #include "testProhibit.hpp"
 #include "testEvaluate.hpp"
+
+void testPrintBoard(BitBoard& com, BitBoard& opp) {
+    cout << "   ";
+    for(int i = 0; i < BOARD_SIZE; i++) {
+        if(i / 10)
+            printf("%d ", i / 10);
+        else
+            printf("  ");
+    }
+    cout << endl;
+    cout << "   ";
+    for(int i = 0; i < BOARD_SIZE; i++) {
+        cout << i % 10 << " ";
+    }
+    cout << endl;
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        cout << setw(2) << i << " ";
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            if (com.checkBit(i, j)) {
+                cout << "● ";
+            } else if (opp.checkBit(i, j)) {
+                cout << "○ ";
+            } else {
+                cout << "・";
+            }
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
 
 int main() {
     int board[BOARD_SIZE][BOARD_SIZE] = {0};
@@ -64,29 +95,14 @@ int main() {
     cout << endl;
     cout << "相手用ボード" << endl;
     subBoard.testPrintBoard();
+    testPrintBoard(bitBoard, subBoard);
     int x, y;
     cout << "(y x)に石を置きます" << endl;
     cin >> y >> x;
     bitBoard.setBit(y, x);
-    if (isProhibitedThreeThree(bitBoard, y, x)) {
-        cout << "33禁です" << endl;
-    } else {
-        cout << "33禁ではありません" << endl;
-    }
+    testPrintBoard(bitBoard, subBoard);
 
-    if (isProhibitedFourFour(bitBoard, y, x)) {
-        cout << "44禁です" << endl;
-    } else {
-        cout << "44禁ではありません" << endl;
-    }
-
-    if (fiveLow(bitBoard, y, x)) {
-        cout << "5連続です" << endl;
-    } else {
-        cout << "5連続ではありません" << endl;
-    }
-
-    bitBoard.testPrintBoard();
+    cout << evaluate(bitBoard, subBoard) << endl;
 
     return 0;
 }
