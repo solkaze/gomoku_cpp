@@ -8,14 +8,14 @@
 shared_mutex globalTTMutex;
 
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
-            int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer) {
+            int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer, pair<int, int> put) {
 
     int cachedEval;
     if (localTT.retrieveEntry(depth, alpha, beta, cachedEval, isMaximizingPlayer)) {
         return cachedEval;
     }
 
-    switch(isWin(computer, opponent)) {
+    switch(isWin(computer, opponent, put)) {
         case GameSet::WIN:
             return SCORE_FIVE;
             break;
@@ -38,13 +38,11 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
 
                 computer.setBit(y, x);
                 localTT.updateHashKey(computer.getStone(), y, x);
-                History.push({computer.getStone(), {y, x}});
 
-                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, localTT, false);
+                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, localTT, false, make_pair(y, x));
 
                 computer.removeBit(y, x);
                 localTT.updateHashKey(computer.getStone(), y, x);
-                History.pop();
 
                 maxEval = max(maxEval, eval);
                 alpha = max(alpha, eval);
@@ -67,13 +65,11 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
 
                 opponent.setBit(y, x);
                 localTT.updateHashKey(opponent.getStone(), y, x);
-                History.push({opponent.getStone(), {y, x}});
 
-                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, localTT, true);
+                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, localTT, true, make_pair(y, x));
 
                 opponent.removeBit(y, x);
                 localTT.updateHashKey(opponent.getStone(), y, x);
-                History.pop();
 
                 minEval = min(minEval, eval);
                 beta = min(beta, eval);

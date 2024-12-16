@@ -18,10 +18,8 @@ constexpr int SCORE_OPEN_THREE  = 5000;
 constexpr int SCORE_CLOSE_THREE = 500;
 constexpr int SCORE_OPEN_TWO    = 500;
 
-// 履歴用スタック
-extern thread_local stack<pair<int, pair<int, int>>> History;
 
-GameSet isWin(const BitBoard& computer, const BitBoard& opponent);
+GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int> put);
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent);
 

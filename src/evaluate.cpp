@@ -5,8 +5,6 @@
 #include "evaluate.hpp"
 #include "csv_data.hpp"
 
-thread_local stack<pair<int, pair<int, int>>> History;
-
 CSVData fiveLowMASK("data/five_mask.csv");
 CSVData fourOpenMask("data/four_open_mask.csv");
 CSVData fourCloseMask("data/four_close_mask.csv");
@@ -35,18 +33,17 @@ bool fiveLow(const BitBoard& bitBoard, const int y, const int x) {
     return false;
 }
 
-GameSet isWin(const BitBoard& computer, const BitBoard& opponent) {
-    auto [stoneType, put] = History.top();
+GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int> put) {
     int y = put.first;
     int x = put.second;
 
-    if (stoneType == computer.getStone()) {
+    if (computer.checkBit(y, x)) {
         if (fiveLow(computer, y, x))      return GameSet::WIN;
-        if (stoneType == STONE_BLACK && isProhibited(computer, y, x)) return GameSet::LOSE;
+        if (computer.getStone() == STONE_BLACK && isProhibited(computer, y, x)) return GameSet::LOSE;
 
-    } else if (stoneType == opponent.getStone()) {
+    } else if (opponent.checkBit(y, x)) {
         if (fiveLow(opponent, y, x))      return GameSet::LOSE;
-        if (stoneType == STONE_BLACK && isProhibited(opponent, y, x)) return GameSet::WIN;
+        if (opponent.getStone() == STONE_BLACK && isProhibited(opponent, y, x)) return GameSet::WIN;
     }
 
     return GameSet::CONTINUE;

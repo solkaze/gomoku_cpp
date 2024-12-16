@@ -5,6 +5,6 @@
 #include "zobrist_hash.hpp"
 
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
-            int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer);
+            int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer, pair<int, int> put);
 
 #endif // ALPHA_BETA_HPP

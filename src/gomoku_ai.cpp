@@ -37,8 +37,8 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     vector<TransportationTable> localTTs; // ローカルTTのリスト
     localTTs.reserve(moves.size());
 
-    for (const auto& [dy, dx] : moves) {
-        if (board[dy][dx] == STONE_SPACE) { // 空白確認
+    for (const auto& [y, x] : moves) {
+        if (board[y][x] == STONE_SPACE) { // 空白確認
             if (futures.size() >= MAX_THREADS) {
                 // スレッドの結果を収集
                 for (auto& fut : futures) {
@@ -64,14 +64,12 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 TransportationTable localTT(board); // 各スレッドで独自のTTを作成
 
                 // ビットボードに現在の手を設定
-                localCom.setBit(dy, dx);
-                localTT.updateHashKey(localCom.getStone(), dy, dx);
-                History.push({localCom.getStone(), {dy, dx}});
+                localCom.setBit(y, x);
+                localTT.updateHashKey(localCom.getStone(), y, x);
 
                 // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, localTT, false);
+                int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, localTT, false, make_pair(y, x));
 
-                History.pop();
 
                 // ローカルTTをリストに保存
                 {
@@ -79,7 +77,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                     localTTs.push_back(move(localTT));
                 }
 
-                return make_pair(moveVal, make_pair(dy, dx));
+                return make_pair(moveVal, make_pair(y, x));
             }));
         }
     }
@@ -136,7 +134,7 @@ pair<pair<int, int>, int> iterativeDeepening(
     return {bestMove, bestVal};
 }
 
-// 最適解探索（使用していない）
+// 最適解探索
 pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone) {
     // 反復深化探索を呼び出して最適手を取得
     auto [bestMove, bestVal] = iterativeDeepening(board, comStone, oppStone, MAX_DEPTH);
@@ -144,107 +142,6 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone)
     cout << "最終的な最適手: " << bestMove.second << ", " << bestMove.first << endl;
     cout << "評価値: " << bestVal << endl;
     cout << "----------\n";
-    return bestMove;
-}
-
-// 最適解探索（使用していない）
-pair<int, int> findBestMoveDefault(int board[][BOARD_SIZE], int comStone, int oppStone) {
-    int bestVal = -INF;
-    pair<int, int> bestMove = {-1, -1};
-    vector<future<pair<int, pair<int, int>>>> futures;
-    mutex mtx; // 排他制御用
-
-    // 各手を分割して並行処理
-    for (const auto& [dy, dx] : SPIRAL_MOVES) {
-
-        if (board[dy][dx] == STONE_SPACE) { // 空白確認
-            // スレッドの上限を維持
-            if (futures.size() >= MAX_THREADS) {
-                for (auto& fut : futures) {
-                    auto [moveVal, pos] = fut.get(); // 結果を取得
-                    cout << pos.first << ", " << pos.second << ": " << moveVal << endl;
-                    lock_guard<mutex> lock(mtx); // 排他制御
-                    if (moveVal > bestVal) {
-                        bestVal = moveVal;
-                        bestMove = pos;
-                    }
-                }
-                futures.clear();
-            }
-
-            // 新しいスレッドで評価を非同期実行
-            futures.emplace_back(async(launch::async, [=, &bestVal]() {
-                auto emptyBoard = make_shared<BitLine>();
-                fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
-
-                BitBoard localCom(comStone, board, emptyBoard);
-                BitBoard localOpp(oppStone, board, emptyBoard);
-
-                TransportationTable localTT(board);
-
-                // ビットボードに現在の手を設定
-                localCom.setBit(dy, dx);
-                localTT.updateHashKey(localCom.getStone(), dy, dx);
-                History.push({localCom.getStone(), {dy, dx}});
-
-                // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, localTT, false);
-
-                History.pop();
-
-                return make_pair(moveVal, make_pair(dy, dx));
-            }));
-        }
-
-    }
-
-    // 残りのスレッド結果を反映
-    for (auto& fut : futures) {
-        auto [moveVal, pos] = fut.get();
-        lock_guard<mutex> lock(mtx);
-        if (moveVal > bestVal) {
-            bestVal = moveVal;
-            bestMove = pos;
-        }
-    }
-
-
-    cout << "\n最適手: " << bestMove.first << ", " << bestMove.second << endl << bestVal << endl;
-    return bestMove;
-}
-
-// スレッドなしバージョン
-pair<int, int> findBestMoveNoThread(int board[][BOARD_SIZE], int comStone, int oppStone) {
-    int bestVal = -INF;
-    pair<int, int> bestMove = {-1, -1};
-
-    for (const auto& [dy, dx] : SPIRAL_MOVES) {
-        if (board[dy][dx] == STONE_SPACE) { // 空白確認
-            auto emptyBoard = make_shared<BitLine>();
-            fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
-
-            BitBoard localCom(comStone, board, emptyBoard);
-            BitBoard localOpp(oppStone, board, emptyBoard);
-
-            TransportationTable localTT(board);
-
-            // ビットボードに現在の手を設定
-            localCom.setBit(dy, dx);
-            localTT.updateHashKey(localCom.getStone(), dy, dx);
-            History.push({localCom.getStone(), {dy, dx}});
-
-            // アルファ・ベータ探索を実行
-            int moveVal = alphaBeta(localCom, localOpp, MAX_DEPTH, bestVal, INF, localTT, false);
-
-            localCom.removeBit(dy, dx);
-            History.pop();
-
-            if (moveVal > bestVal) {
-                bestVal = moveVal;
-                bestMove = make_pair(dy, dx);
-            }
-        }
-    }
     return bestMove;
 }
 
