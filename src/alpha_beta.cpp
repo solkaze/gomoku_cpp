@@ -1,11 +1,48 @@
 #include <utility>
 #include <shared_mutex>
+#include <iomanip>
 
 #include "common.hpp"
 #include "alpha_beta.hpp"
 #include "evaluate.hpp"
 
+bool Survey = false;
+
 shared_mutex globalTTMutex;
+
+void testPrintBoard(const BitBoard& com, const BitBoard& opp) {
+    cout << "   ";
+    for(int i = 0; i < BOARD_SIZE; i++) {
+        if(i / 10)
+            printf("%d ", i / 10);
+        else
+            printf("  ");
+    }
+    cout << endl;
+    cout << "   ";
+    for(int i = 0; i < BOARD_SIZE; i++) {
+        cout << i % 10 << " ";
+    }
+    cout << endl;
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        cout << setw(2) << i << " ";
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            if (com.checkBit(i, j)) {
+                if (com.getStone() == STONE_BLACK)
+                    cout << "● ";
+                else cout << "○ ";
+            } else if (opp.checkBit(i, j)) {
+                if (opp.getStone() == STONE_BLACK)
+                    cout << "● ";
+                else cout << "○ ";
+            } else {
+                cout << "・";
+            }
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
 
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
             int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer, pair<int, int> put) {
@@ -44,8 +81,8 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 computer.removeBit(y, x);
                 localTT.updateHashKey(computer.getStone(), y, x);
 
-                maxEval = max(maxEval, eval);
-                alpha = max(alpha, eval);
+                maxEval = std::max(maxEval, eval);
+                alpha   = std::max(alpha, eval);
 
                 if (beta <= alpha) { // ベータカット
                     localTT.storeEntry(depth, maxEval, BoundType::LOWER_BOUND);
@@ -71,8 +108,8 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 opponent.removeBit(y, x);
                 localTT.updateHashKey(opponent.getStone(), y, x);
 
-                minEval = min(minEval, eval);
-                beta = min(beta, eval);
+                minEval = std::min(minEval, eval);
+                beta    = std::min(beta, eval);
 
                 if (beta <= alpha) { // アルファカット
                     localTT.storeEntry(depth, minEval, BoundType::UPPER_BOUND);

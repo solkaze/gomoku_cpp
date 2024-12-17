@@ -44,7 +44,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 for (auto& fut : futures) {
                     auto [moveVal, pos] = fut.get();
                     lock_guard<mutex> lock(mtx);
-                    // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
+                    cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
                     if (moveVal > bestVal) {
                         bestVal = moveVal;
                         bestMove = pos;
@@ -86,7 +86,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     for (auto& fut : futures) {
         auto [moveVal, pos] = fut.get();
         lock_guard<mutex> lock(mtx);
-        // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
+        cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
         if (moveVal > bestVal) {
             bestVal = moveVal;
             bestMove = pos;
@@ -96,6 +96,47 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     // 全ローカルTTをグローバルTTにマージ
     for (const auto& localTT : localTTs) {
         localTT.mergeTo();
+    }
+
+    return {bestMove, bestVal};
+}
+
+// スレッドなしバージョン
+pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
+    int board[][BOARD_SIZE],
+    int comStone,
+    int oppStone,
+    const vector<pair<int, int>>& moves,
+    int depth,
+    int previousBestVal,
+    pair<int, int> previousBestMove) {
+
+    pair<int, int> bestMove = previousBestMove;
+    int bestVal = previousBestVal;
+
+    for (const auto& [y, x] : moves) {
+        if (board[y][x] == STONE_SPACE) { // 空白確認
+            auto emptyBoard = make_shared<BitLine>();
+            fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
+
+            BitBoard localCom(comStone, board, emptyBoard);
+            BitBoard localOpp(oppStone, board, emptyBoard);
+
+            TransportationTable localTT(board); // 各スレッドで独自のTTを作成
+
+            // ビットボードに現在の手を設定
+            localCom.setBit(y, x);
+            localTT.updateHashKey(localCom.getStone(), y, x);
+            // アルファ・ベータ探索を実行
+            int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, localTT, false, make_pair(y, x));
+
+            if (moveVal > bestVal) {
+                bestVal = moveVal;
+                bestMove = make_pair(y, x);
+            }
+
+            localTT.mergeTo();
+        }
     }
 
     return {bestMove, bestVal};
@@ -146,7 +187,7 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone)
 }
 
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
-    static bool first = true;
+    static bool first = false;
 
     // 序盤処理の設定
     if (com == STONE_BLACK && first) {

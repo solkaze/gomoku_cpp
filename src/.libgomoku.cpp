@@ -117,7 +117,7 @@ int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Boa
                     //printf("44 tmp_y=%d tmp_x=%d c44Board[tmp_y][tmp_x]=%d\n", tmp_y,tmp_x,c44Board[tmp_y][tmp_x]);
                     //printf("44 i=%d j=%d c44Board[i][j]=%d\n", i,j,c44Board[i][j]);
                 if (c44Board[tmp_y][tmp_x]!=c44Board[i][j]){
-                    printf("四四の禁じ手です。%sの勝ちです\n", "○");
+                    printf("四四の禁じ手です。%sの勝ちです\n", "○ ");
                     return 1;} else if (distance(tmp_y,tmp_x,i,j)>2){
                     printf("四四の禁じ手です。%sの勝ちです\n", "○ ");
                     return 1;}
