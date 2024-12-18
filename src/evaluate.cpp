@@ -55,11 +55,24 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int>
 
 int evaluateLineScore(int line, int empty, const vector<RowData>& masks, const int score) {
     for (const auto& mask : masks) {
-        int filteredLine = line & mask.range;
+        uint32_t filteredLine = line & mask.range;
         if (filteredLine != mask.stones) continue;  // 条件を満たさない場合はスキップ
 
-        int filteredEmpty = empty & mask.range;
+        uint32_t filteredEmpty = empty & mask.range;
         if (filteredEmpty == mask.empty) return score;
+    }
+    return 0;
+}
+
+int evaluateLineScoreOpen(int line, int empty, const vector<RowData>& masks, const int score) {
+    for (const auto& mask : masks) {
+        uint32_t filteredLine = line & mask.range;
+        if (filteredLine != mask.stones) continue;  // 条件を満たさない場合はスキップ
+
+        uint32_t filteredEmpty = empty & mask.range;
+        if (filteredEmpty == mask.empty) {
+            // ２つ後ろを確認
+        }
     }
     return 0;
 }
@@ -74,42 +87,49 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
             if (computer.checkBit(y, x)) {
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -1, 5);
+                    auto [lineOpen, emptyOpen] = computer.putOutBitLine(y, x, dy, dx, -2, 5);
+                    uint32_t lineClose = lineOpen << 1;
+                    uint32_t emptyClose = emptyOpen << 1;
                     int preScore = score;
-                    // 2連両端空き
-                    score += evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_OPEN_TWO);
-                    if (preScore != score) continue;
-                    // 3連片側空き
-                    score += evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_CLOSE_THREE);
-                    if (preScore != score) continue;
-                    // 3連両端空き
-                    score += evaluateLineScore(line, empty, THREE_OPEN_MASK,  SCORE_OPEN_THREE);
+                    // ４連両端空き
+                    score += evaluateLineScore(lineOpen, emptyOpen, FOUR_OPEN_MASK,   SCORE_OPEN_FOUR);
                     if (preScore != score) continue;
                     // 4連片側空き
-                    score += evaluateLineScore(line, empty, FOUR_CLOSE_MASK,  SCORE_CLOSE_FOUR);
+                    score += evaluateLineScore(lineClose, emptyOpen, FOUR_CLOSE_MASK,  SCORE_CLOSE_FOUR);
                     if (preScore != score) continue;
-                    // ４連両端空き
-                    score += evaluateLineScore(line, empty, FOUR_OPEN_MASK,   SCORE_OPEN_FOUR);
+                    // 3連両端空き
+                    score += evaluateLineScore(lineOpen, emptyOpen, THREE_OPEN_MASK,  SCORE_OPEN_THREE);
+                    if (preScore != score) continue;
+                    // 3連片側空き
+                    score += evaluateLineScore(lineOpen, emptyOpen, THREE_CLOSE_MASK, SCORE_CLOSE_THREE);
+                    if (preScore != score) continue;
+                    // 2連両端空き
+                    score += evaluateLineScore(lineOpen, emptyOpen, TWO_OPEN_MASK,    SCORE_OPEN_TWO);
+
+
+
                 }
             } else if (opponent.checkBit(y, x)) {
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -1, 5);
+                    auto [lineOpen, emptyOpen] = opponent.putOutBitLine(y, x, dy, dx, -2, 5);
+                    uint32_t lineClose = lineOpen << 1;
+                    uint32_t emptyClose = emptyOpen << 1;
                     int preScore = score;
-                    // 2連両端空き
-                    score -= evaluateLineScore(line, empty, TWO_OPEN_MASK, SCORE_OPEN_TWO);
-                    if (preScore != score) continue;
-                    // 3連片側空き
-                    score -= evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_CLOSE_THREE);
-                    if (preScore != score) continue;
-                    // 3連両端空き
-                    score -= evaluateLineScore(line, empty, THREE_OPEN_MASK, SCORE_OPEN_THREE);
+                    // ４連両端空き
+                    score -= evaluateLineScore(lineOpen, emptyOpen, FOUR_OPEN_MASK, -SCORE_OPEN_FOUR);
                     if (preScore != score) continue;
                     // 4連片側空き
-                    score -= evaluateLineScore(line, empty, FOUR_CLOSE_MASK, SCORE_CLOSE_FOUR);
+                    score -= evaluateLineScore(lineClose, emptyOpen, FOUR_CLOSE_MASK, -SCORE_CLOSE_FOUR);
                     if (preScore != score) continue;
-                    // ４連両端空き
-                    score -= evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_OPEN_FOUR);
+                    // 3連両端空き
+                    score -= evaluateLineScore(lineOpen, emptyOpen, THREE_OPEN_MASK, -SCORE_OPEN_THREE);
+                    if (preScore != score) continue;
+                    // 3連片側空き
+                    score -= evaluateLineScore(lineOpen, emptyOpen, THREE_CLOSE_MASK, -SCORE_CLOSE_THREE);
+                    if (preScore != score) continue;
+                    // 2連両端空き
+                    score -= evaluateLineScore(lineOpen, emptyOpen, TWO_OPEN_MASK, -SCORE_OPEN_TWO);
                 }
             }
         }
