@@ -44,7 +44,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 for (auto& fut : futures) {
                     auto [moveVal, pos] = fut.get();
                     lock_guard<mutex> lock(mtx);
-                    cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
+                    // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
                     if (moveVal > bestVal) {
                         bestVal = moveVal;
                         bestMove = pos;
@@ -86,7 +86,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     for (auto& fut : futures) {
         auto [moveVal, pos] = fut.get();
         lock_guard<mutex> lock(mtx);
-        cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
+        // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
         if (moveVal > bestVal) {
             bestVal = moveVal;
             bestMove = pos;

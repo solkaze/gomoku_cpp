@@ -11,6 +11,7 @@ CSVData fourCloseMask("../data/four_close_mask.csv");
 CSVData threeOpenMask("../data/three_open_mask.csv");
 CSVData threeCloseMask("../data/three_close_mask.csv");
 CSVData twoOpenMask("../data/two_open_mask.csv");
+CSVData skipMask("../data/skip_mask.csv");
 
 const auto FIVE_LOW_MASK    = fiveLowMASK.getData();
 const auto FOUR_OPEN_MASK   = fourOpenMask.getData();
@@ -18,6 +19,7 @@ const auto FOUR_CLOSE_MASK  = fourCloseMask.getData();
 const auto THREE_OPEN_MASK  = threeOpenMask.getData();
 const auto THREE_CLOSE_MASK = threeCloseMask.getData();
 const auto TWO_OPEN_MASK    = twoOpenMask.getData();
+const auto SKIP_MASK        = skipMask.getData();
 
 void testPrintBoard(const BitBoard& com,const BitBoard& opp, int y, int x) {
     cout << "   ";
@@ -57,10 +59,10 @@ void testPrintBoard(const BitBoard& com,const BitBoard& opp, int y, int x) {
 int evaluateLineScore(int line, int empty, const vector<RowData>& masks, const int score) {
     int totalScore = 0;
     for (const auto& mask : masks) {
-        int filteredLine = line & mask.range;
+        uint32_t filteredLine = line & mask.range;
         if (filteredLine != mask.stones) continue;  // 条件を満たさない場合はスキップ
 
-        int filteredEmpty = empty & mask.range;
+        uint32_t filteredEmpty = empty & mask.range;
         if (filteredEmpty == mask.empty) {
             totalScore += score;
         }
@@ -71,6 +73,17 @@ int evaluateLineScore(int line, int empty, const vector<RowData>& masks, const i
         cout << "スコア:\t" << totalScore << endl;
     }
     return totalScore;
+}
+
+bool evaluateLineScore(int line, int empty, const vector<RowData>& masks) {
+    for (const auto& mask : masks) {
+        uint32_t filteredLine = line & mask.range;
+        if (filteredLine != mask.stones) continue;  // 条件を満たさない場合はスキップ
+
+        uint32_t filteredEmpty = empty & mask.range;
+        if (filteredEmpty == mask.empty) return true;
+    }
+    return false;
 }
 
 
@@ -87,7 +100,7 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                 testPrintBoard(computer, opponent, y, x);
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -1, 5);
+                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 5);
                     int preScore = score;
                     cout << "-----\n";
                     cout << "向き: ";
@@ -95,6 +108,8 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     else if (dy == 1 && dx == 0) cout << "下" << endl;
                     else if (dy == 1 && dx == 1) cout << "右下" << endl;
                     else if (dy == 1 && dx == -1) cout << "左下" << endl;
+                    cout << endl;
+                    if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
                     // 2連両端空き
                     score += evaluateLineScore(line, empty, TWO_OPEN_MASK, SCORE_OPEN_TWO);
                     if (preScore != score) continue;
@@ -109,8 +124,6 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     if (preScore != score) continue;
                     // 4連両端空き
                     score += evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_OPEN_FOUR);
-
-                    cout << endl;
                 }
                 cout << "\n全体スコア:\t" << score << endl;
                 cout << "==========\n";
@@ -121,7 +134,7 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                 testPrintBoard(computer, opponent, y, x);
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -1, 5);
+                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -2, 5);
                     int preScore = score;
                     cout << "-----\n";
                     cout << "向き: ";
@@ -129,6 +142,8 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     else if (dy == 1 && dx == 0) cout << "下" << endl;
                     else if (dy == 1 && dx == 1) cout << "右下" << endl;
                     else if (dy == 1 && dx == -1) cout << "左下" << endl;
+                    cout << endl;
+                    if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
                     // 2連両端空き
                     score -= evaluateLineScore(line, empty, TWO_OPEN_MASK, SCORE_OPEN_TWO);
                     if (preScore != score) continue;
@@ -143,7 +158,6 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     if (preScore != score) continue;
                     // 4連両端空き
                     score -= evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_OPEN_FOUR);
-                    cout << endl;
                 }
                 cout << "\n全体スコア:\t" << score << endl;
                 cout << "==========\n";

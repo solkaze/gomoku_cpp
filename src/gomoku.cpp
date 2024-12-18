@@ -37,8 +37,6 @@ int main() {
 
     // 初期処理
     if(gameInit(board, c33Board, c44Board,  &which_turn, &com) == 1) return 1;
-
-
     boardPrint(board);
 
     //---- メインループ

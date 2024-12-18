@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <cstdint>
 
 
 #include "testCsv.hpp"
@@ -34,7 +35,7 @@ CSVData::CSVData(const string& filename) {
                 continue;
             }
 
-            int value = std::stoi(cell, nullptr, 2);
+            uint32_t value = std::stoi(cell, nullptr, 2);
 
             if (colIndex == 0) row.stones = value;
             else if (colIndex == 1) row.empty = value;

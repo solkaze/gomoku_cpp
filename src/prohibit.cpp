@@ -18,10 +18,10 @@ bool isProhibitedThreeThree(const BitBoard& bitBoard, int y, int x) {
         auto [line, empty] = bitBoard.putOutBitLine(y, x, dy, dx, -4, 4);
 
         for (const auto& mask : THREE_OPEN_MASK) {
-            int filteredLine = line & mask.range;
+            uint32_t filteredLine = line & mask.range;
             if (filteredLine != mask.stones) continue;
 
-            int filteredEmpty = empty & mask.range;
+            uint32_t filteredEmpty = empty & mask.range;
             if (filteredLine == mask.stones && filteredEmpty == mask.empty) ++threeCount;
         }
     }
@@ -37,10 +37,10 @@ bool isProhibitedFourFour(const BitBoard& bitBoard, int y, int x) {
         auto [line, empty] = bitBoard.putOutBitLine(y, x, dy, dx, -5, 5);
 
         for (const auto& mask : FOUR_OPEN_MASK) {
-            int filteredLine = line & mask.range;
+            uint32_t filteredLine = line & mask.range;
             if (filteredLine != mask.stones) continue;
 
-            int filteredEmpty = empty & mask.range;
+            uint32_t filteredEmpty = empty & mask.range;
             if (filteredLine == mask.stones && filteredEmpty == mask.empty) ++fourCount;
         }
     }
