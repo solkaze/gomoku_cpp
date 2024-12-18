@@ -38,15 +38,12 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int>
     int x = put.second;
 
     if (computer.checkBit(y, x)) {
-        if (fiveLow(computer, y, x)) {
-            return GameSet::WIN;
-        }
+        if (fiveLow(computer, y, x)) return GameSet::WIN;
+        
         if (computer.getStone() == STONE_BLACK && isProhibited(computer, y, x)) return GameSet::LOSE;
 
     } else if (opponent.checkBit(y, x)) {
-        if (fiveLow(opponent, y, x)) {
-            return GameSet::LOSE;
-        }
+        if (fiveLow(opponent, y, x)) return GameSet::LOSE;
         if (opponent.getStone() == STONE_BLACK && isProhibited(opponent, y, x)) return GameSet::WIN;
     }
 
