@@ -11,9 +11,9 @@
 using namespace std;
 
 struct RowData {
-    int stones;
-    int empty;
-    int range;
+    uint32_t stones;
+    uint32_t empty;
+    uint32_t range;
 };
 
 class CSVData {
