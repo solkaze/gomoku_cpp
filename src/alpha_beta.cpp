@@ -54,7 +54,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
 
     switch(isWin(computer, opponent, put)) {
         case GameSet::WIN:
-            return SCORE_FIVE;
+            return  SCORE_FIVE;
             break;
         case GameSet::LOSE:
             return -SCORE_FIVE;

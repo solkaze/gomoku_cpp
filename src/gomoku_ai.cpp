@@ -20,17 +20,25 @@
 //*    関数実装
 //*==================================================
 
+// ハッシュ関数を定義（pairをキーにする場合に必要）
+struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator()(const std::pair<T1, T2>& p) const {
+        return std::hash<T1>()(p.first) ^ std::hash<T2>()(p.second);
+    }
+};
+
+std::unordered_map<std::pair<int, int>, int, pair_hash> historyHeuristic;
+
 pair<pair<int, int>, int> searchBestMoveAtDepth(
     int board[][BOARD_SIZE],
     int comStone,
     int oppStone,
     const vector<pair<int, int>>& moves,
-    int depth,
-    int previousBestVal,
-    pair<int, int> previousBestMove) {
+    int depth) {
 
-    pair<int, int> bestMove = previousBestMove;
-    int bestVal = previousBestVal;
+    pair<int, int> bestMove = {-1, -1};
+    int bestVal = -INF;
     vector<future<pair<int, pair<int, int>>>> futures;
     mutex mtx; // 排他制御用
 
@@ -49,6 +57,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                         bestVal = moveVal;
                         bestMove = pos;
                     }
+                    historyHeuristic[pos] = moveVal;
                 }
                 futures.clear();
             }
@@ -91,6 +100,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
             bestVal = moveVal;
             bestMove = pos;
         }
+        historyHeuristic[pos] = moveVal;
     }
 
     // 全ローカルTTをグローバルTTにマージ
@@ -107,12 +117,10 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
     int comStone,
     int oppStone,
     const vector<pair<int, int>>& moves,
-    int depth,
-    int previousBestVal,
-    pair<int, int> previousBestMove) {
+    int depth) {
 
-    pair<int, int> bestMove = previousBestMove;
-    int bestVal = previousBestVal;
+    pair<int, int> bestMove = {-1, -1};
+    int bestVal = -INF;
 
     for (const auto& [y, x] : moves) {
         if (board[y][x] == STONE_SPACE) { // 空白確認
@@ -158,18 +166,18 @@ pair<pair<int, int>, int> iterativeDeepening(
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
             sort(sortedMoves.begin(), sortedMoves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
-                int distA = abs(a.first - bestMove.first) + abs(a.second - bestMove.second);
-                int distB = abs(b.first - bestMove.first) + abs(b.second - bestMove.second);
-                return distA < distB;
+                return historyHeuristic[a] > historyHeuristic[b];
             });
+            historyHeuristic.clear();
         }
 
         // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, sortedMoves, depth, bestVal, bestMove);
+        tie(bestMove, bestVal) = searchBestMoveAtDepthNoThread(board, comStone, oppStone, sortedMoves, depth);
 
         // 深さごとの結果を表示（デバッグ用）
         cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
+        if (bestVal >= SCORE_FIVE && depth == 1) break;
     }
 
     return {bestMove, bestVal};
@@ -187,15 +195,22 @@ pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone)
 }
 
 int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
-    static bool first = false;
+    static bool first = true;
 
     // 序盤処理の設定
-    if (com == STONE_BLACK && first) {
+    if (first) {
         first = false;
-        // 初手として中央を指定
-        *pos_y = BOARD_SIZE / 2;
-        *pos_x = BOARD_SIZE / 2;
+        if (com == STONE_BLACK) {
+            // 初手として中央を指定
+            *pos_y = BOARD_SIZE / 2;
+            *pos_x = BOARD_SIZE / 2;
+        } else {
+            // 初手として角を指定
+            *pos_y = BOARD_SIZE / 2;
+            *pos_x = BOARD_SIZE / 2 + 1;
+        }
         return 0;
+        
     }
 
     auto start = chrono::high_resolution_clock::now();
