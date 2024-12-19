@@ -12,4 +12,6 @@ constexpr int SCORE_OPEN_TWO    = 50;
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent);
 
+bool checkChance(int board[][BOARD_SIZE], int comStone, int oppStone);
+
 #endif // TEST_EVALUATE_HPP

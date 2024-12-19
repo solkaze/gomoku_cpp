@@ -7,9 +7,35 @@
 #include "alpha_beta.hpp"
 #include "evaluate.hpp"
 
-bool Survey = false;
+array<pair<int, int>, LIMIT_SEARCH_MOVE> generateLimitMoves(int y, int x);
 
 shared_mutex globalTTMutex;
+
+array<pair<int, int>, LIMIT_SEARCH_MOVE> LimitMoves = generateLimitMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
+
+array<pair<int, int>, LIMIT_SEARCH_MOVE> generateLimitMoves(int y, int x) {
+    array<pair<int, int>, LIMIT_SEARCH_MOVE> moves{};
+    int cy = y, cx = x;
+    moves[0] = {cy, cx};
+
+    const int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+    int steps = 1;
+    int index = 1;
+
+    while (index < LIMIT_SEARCH_MOVE) {
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < steps && index < LIMIT_SEARCH_MOVE; ++j) {
+                cy += directions[i][0];
+                cx += directions[i][1];
+                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 && cx < K_BOARD_SIZE) {
+                    moves[index++] = {cy, cx};
+                }
+            }
+            if (i % 2 == 1) ++steps;
+        }
+    }
+    return moves;
+}
 
 void testPrintBoard(const BitBoard& com, const BitBoard& opp) {
     cout << "   ";
@@ -232,10 +258,11 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
             auto emptyBoard = make_shared<BitLine>();
             fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
 
+            // ビットボードの初期化
             BitBoard localCom(comStone, board, emptyBoard);
             BitBoard localOpp(oppStone, board, emptyBoard);
 
-            TransportationTable localTT(board); // 各スレッドで独自のTTを作成
+            TransportationTable localTT(board); // 各スレッドで独自のトランスポーテーションテーブルを作成
 
             // ビットボードに現在の手を設定
             localCom.setBit(y, x);
@@ -257,33 +284,43 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
 
 // 反復深化探索
 pair<pair<int, int>, int> iterativeDeepening(
-    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
+    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth, pair<int, int>& put) {
     pair<int, int> bestMove = {-1, -1}; // 最適手
     int bestVal = -INF;                // 初期評価値
 
+    // 脅威を検出したら相手の置いた手を中心に探索
+    if (checkThreat(board,comStone, oppStone)) {
+        cout << "脅威検出" << endl;
+        LimitMoves = generateLimitMoves(put.first, put.second);
+    }
+
     // 動的にソート可能なコピーを作成
-    vector<pair<int, int>> sortedMoves(SPIRAL_MOVES.begin(), SPIRAL_MOVES.end());
+    vector<pair<int, int>> moves(LimitMoves.begin(), LimitMoves.end());
 
     // 反復深化探索
     for (int depth = 1; depth <= maxDepth; ++depth) {
+        cout << "----------\n";
         cout << "探索深さ: " << depth << endl;
 
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
-            sort(sortedMoves.begin(), sortedMoves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
+            sort(moves.begin(), moves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
                 return historyHeuristic[a] > historyHeuristic[b];
             });
             historyHeuristic.clear();
         }
 
         // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepthNoThread(board, comStone, oppStone, sortedMoves, depth);
+        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
 
         // 深さごとの結果を表示（デバッグ用）
         cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
         if (bestVal >= SCORE_FIVE && depth == 1) break;
     }
+
+    // 探索対象を更新
+    LimitMoves = generateLimitMoves(bestMove.first, bestMove.second);
 
     return {bestMove, bestVal};
 }

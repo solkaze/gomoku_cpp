@@ -4,9 +4,15 @@
 using namespace std;
 
 #include <numeric>
+#include <array>
 
 #include "gomoku.hpp"
 
+//*====================
+//*  定数
+//*====================
+
+// 無限点(INT型の最大値)
 constexpr int INF = numeric_limits<int>::max();
 
 // アルファ・ベータ法最大深度
@@ -27,6 +33,12 @@ constexpr int BITBOARD_PARTS = (TOTAL_CELLS + 63) / 64;
 // ビット列の最大サイズ
 constexpr int SEGMENT_SIZE = 64;
 
+// 探索範囲の最大値
+constexpr int LIMIT_SEARCH_MOVE = 81;
+
+// 探索を切り替えるタイミング
+constexpr int SWITCHING_SEARCH_MOVE = 20;
+
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
     {0,  1},
@@ -41,7 +53,7 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     int cy = K_BOARD_SIZE / 2, cx = K_BOARD_SIZE / 2;
     moves[0] = {cy, cx};
 
-    const int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+    constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
     int steps = 1;
     int index = 1;
 
