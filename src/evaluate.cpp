@@ -1,6 +1,5 @@
 #include <iomanip>
 
-#include "common.hpp"
 #include "prohibit.hpp"
 #include "evaluate.hpp"
 #include "csv_data.hpp"

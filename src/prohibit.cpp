@@ -1,6 +1,5 @@
 #include <array>
 
-#include "common.hpp"
 #include "prohibit.hpp"
 #include "csv_data.hpp"
 

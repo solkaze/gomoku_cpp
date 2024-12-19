@@ -24,7 +24,6 @@ set(SRC
 set(HEADERS
   include/alpha_beta.hpp
   include/bit_board.hpp
-  include/common.hpp
   include/csv_data.hpp
   include/evaluate.hpp
   include/gomoku_ai.hpp

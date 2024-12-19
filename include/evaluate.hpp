@@ -1,9 +1,7 @@
 #ifndef EVALUATE_HPP
 #define EVALUATE_HPP
 
-#include <thread>
-#include <stack>
-#include "common.hpp"
+#include "bit_board.hpp"
 
 enum class GameSet {
     WIN,

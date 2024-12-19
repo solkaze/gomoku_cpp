@@ -2,12 +2,12 @@
 #define BITBOARD_AI
 
 #include <array>
-#include <cstdint>
-#include <iostream>
 #include <memory>
 
 #include "gomoku_ai.hpp"
 #include "gomoku.hpp"
+
+using namespace std;
 
 using BitLine = array<uint64_t, BITBOARD_PARTS>;
 
