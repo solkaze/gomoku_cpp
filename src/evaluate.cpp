@@ -5,6 +5,23 @@
 #include "evaluate.hpp"
 #include "csv_data.hpp"
 
+//*====================
+//* プロトタイプ宣言
+//*====================
+
+bool fiveLow(const BitBoard& bitBoard, const int y, const int x);
+
+GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int> put);
+
+Advantage checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
+
+bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int stone, const vector<RowData>& masks);
+
+//*====================
+//* グローバル変数
+//*====================
+
+// CSVデータクラスの定義
 CSVData fiveLowMASK("data/five_mask.csv");
 CSVData fourOpenMask("data/four_open_mask.csv");
 CSVData fourCloseMask("data/four_close_mask.csv");
@@ -40,27 +57,24 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int>
     int x = put.second;
 
     if (computer.checkBit(y, x)) {
-        if (fiveLow(computer, y, x)) return GameSet::WIN;
         if (computer.getStone() == STONE_BLACK && isProhibited(computer, y, x)) return GameSet::LOSE;
+        if (fiveLow(computer, y, x)) return GameSet::WIN;
 
     } else if (opponent.checkBit(y, x)) {
-        if (fiveLow(opponent, y, x)) return GameSet::LOSE;
         if (opponent.getStone() == STONE_BLACK && isProhibited(opponent, y, x)) return GameSet::WIN;
+        if (fiveLow(opponent, y, x)) return GameSet::LOSE;
     }
 
     return GameSet::CONTINUE;
 }
 
-bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
-
-bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int stone, const vector<RowData>& masks);
-
-bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX) {
+Advantage checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX) {
     bool comChanceThree = false;
     bool comChanceFour  = false;
     bool oppChanceThree = false;
     bool oppChanceFour  = false;
-    int storeX = -1, storeY = -1;
+    int comStoreX = -1, comStoreY = -1;
+    int oppStoreX = -1, oppStoreY = -1;
 
     for (int y = 0; y < BOARD_SIZE; ++y) {
         for (int x = 0; x < BOARD_SIZE; ++x) {
@@ -69,14 +83,19 @@ bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY,
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_OPEN_MASK)) {
                         comChanceFour = true;
+                        comStoreY = y + dy;
+                        comStoreX = x + dx;
                         break;
-                    }
-                    if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_CLOSE_MASK)) {
+                    } else if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_CLOSE_MASK)) {
                         comChanceFour = true;
+                        comStoreY = y + dy;
+                        comStoreX = x + dx;
                         break;
-                    }
-                    if (!comChanceThree && isOpenSequence(board, y, x, dy, dx, comStone, THREE_OPEN_MASK)) {
+                    } else if (!comChanceFour && !comChanceThree &&
+                                isOpenSequence(board, y, x, dy, dx, comStone, THREE_OPEN_MASK)) {
                         comChanceThree = true;
+                        comStoreY = y + dy;
+                        comStoreX = x + dx;
                         break;
                     }
                 }
@@ -84,20 +103,19 @@ bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY,
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_OPEN_MASK)) {
                         oppChanceFour = true;
-                        storeY = y;
-                        storeX = x;
+                        oppStoreY = y + dy;
+                        oppStoreX = x + dx;
                         break;
-                    }
-                    if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_CLOSE_MASK)) {
+                    } else if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_CLOSE_MASK)) {
                         oppChanceFour = true;
-                        storeY = y;
-                        storeX = x;
+                        oppStoreY = y + dy;
+                        oppStoreX = x + dx;
                         break;
-                    }
-                    if (!oppChanceThree && isOpenSequence(board, y, x, dy, dx, oppStone, THREE_OPEN_MASK)) {
+                    } else if (!oppChanceFour && !oppChanceThree &&
+                                isOpenSequence(board, y, x, dy, dx, oppStone, THREE_OPEN_MASK)) {
                         oppChanceThree = true;
-                        storeY = y;
-                        storeX = x;
+                        oppStoreY = y + dy;
+                        oppStoreX = x + dx;
                         break;
                     }
                 }
@@ -106,26 +124,24 @@ bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY,
     }
 
     if (comChanceFour) {
-        putY = -1;
-        putX = -1;
-        return false;
+        putY = comStoreY;
+        putX = comStoreX;
+        return Advantage::COM;
     } else if (oppChanceFour) {
-        putY = storeY;
-        putX = storeX;
-        return true;
+        putY = oppStoreY;
+        putX = oppStoreX;
+        return Advantage::OPP;
     } else if (comChanceThree) {
-        putY = -1;
-        putX = -1;
+        putY = comStoreY;
+        putX = comStoreX;
+        return Advantage::COM;
     } else if (oppChanceThree) {
-        putY = storeY;
-        putX = storeX;
-        return true;
-    } else {
-        putY = -1;
-        putX = -1;
+        putY = oppStoreY;
+        putX = oppStoreX;
+        return Advantage::OPP;
     }
 
-    return false;
+    return Advantage::DRAW;
 }
 
 bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int stone, const vector<RowData>& masks) {
@@ -223,9 +239,6 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     if (preScore != score) continue;
                     // 2連両端空き
                     score += evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_OPEN_TWO);
-
-
-
                 }
             } else if (opponent.checkBit(y, x)) {
 

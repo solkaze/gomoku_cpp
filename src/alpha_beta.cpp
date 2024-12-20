@@ -7,16 +7,51 @@
 #include "alpha_beta.hpp"
 #include "evaluate.hpp"
 
-vector<pair<int, int>> generateLimitMoves(int y, int x);
 
+//*====================
+//* 構造体定義
+//*====================
+struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator()(const std::pair<T1, T2>& p) const {
+        return std::hash<T1>()(p.first) ^ std::hash<T2>()(p.second);
+    }
+};
+
+//*====================
+//* プロトタイプ宣言
+//*====================
+
+vector<pair<int, int>> generateSearchMoves(int y, int x);
+
+void testPrintBoard(const BitBoard& com, const BitBoard& opp);
+
+int alphaBeta(BitBoard& computer, BitBoard& opponent,
+                int depth, int alpha, int beta,
+                TransportationTable& localTT, bool isMaximizingPlayer, pair<int, int> put);
+
+//*====================
+//* グローバル変数
+//*====================
+
+// 履歴ヒューリスティック
+unordered_map<pair<int, int>, int, pair_hash> historyHeuristic;
+
+// スレッドの共有ロック
 shared_mutex globalTTMutex;
 
-vector<pair<int, int>> SearchMoves = generateLimitMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
+// 探索順序配列
+vector<pair<int, int>> SearchMoves = generateSearchMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
 
-vector<pair<int, int>> generateLimitMoves(int y, int x) {
-    vector<pair<int, int>> moves{};
+// 予測用探索配列
+vector<pair<int, int>> PredictSearchMoves;
+
+
+
+vector<pair<int, int>> generateSearchMoves(int y, int x) {
+    vector<pair<int, int>> moves(LIMIT_SEARCH_MOVE);
     int cy = y, cx = x;
-    moves.push_back({cy, cx});
+    moves[0] = {cy, cx};
 
     constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
     int steps = 1;
@@ -97,7 +132,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     if (isMaximizingPlayer) {
         int maxEval = -INF;
 
-        for (const auto& [y, x] : SearchMoves) {
+        for (const auto& [y, x] : PredictSearchMoves) {
             if (computer.checkEmptyBit(y, x)) {
 
                 computer.setBit(y, x);
@@ -124,7 +159,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     } else {
         int minEval = INF;
 
-        for (const auto& [y, x] : SearchMoves) {
+        for (const auto& [y, x] : PredictSearchMoves) {
             if (opponent.checkEmptyBit(y, x)) {
 
                 opponent.setBit(y, x);
@@ -151,22 +186,9 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     }
 }
 
-// ハッシュ関数を定義（pairをキーにする場合に必要）
-struct pair_hash {
-    template <class T1, class T2>
-    std::size_t operator()(const std::pair<T1, T2>& p) const {
-        return std::hash<T1>()(p.first) ^ std::hash<T2>()(p.second);
-    }
-};
-
-std::unordered_map<std::pair<int, int>, int, pair_hash> historyHeuristic;
-
 pair<pair<int, int>, int> searchBestMoveAtDepth(
-    int board[][BOARD_SIZE],
-    int comStone,
-    int oppStone,
-    const vector<pair<int, int>>& moves,
-    int depth) {
+        int board[][BOARD_SIZE], int comStone, int oppStone,
+        const vector<pair<int, int>>& moves, int depth) {
 
     pair<int, int> bestMove = {-1, -1};
     int bestVal = -INF;
@@ -267,6 +289,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
             // ビットボードに現在の手を設定
             localCom.setBit(y, x);
             localTT.updateHashKey(localCom.getStone(), y, x);
+
             // アルファ・ベータ探索を実行
             int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, localTT, false, make_pair(y, x));
 
@@ -285,15 +308,26 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
 // 反復深化探索
 pair<pair<int, int>, int> iterativeDeepening(
     int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
+
     pair<int, int> bestMove = {-1, -1}; // 最適手
     int bestVal = -INF;                // 初期評価値
 
     // 脅威を検出したら相手の置いた手を中心に探索
-    int threatY = -1, threatX = -1;
-    if (checkThreat(board, comStone, oppStone, threatY, threatX)) {
-        cout << "脅威検出" << endl;
-        cout << "脅威の手: " << threatY << ", " << threatX << endl;
-        SearchMoves = generateLimitMoves(threatY, threatX);
+    int priorityY = -1, priorityX = -1;
+    switch(checkThreat(board, comStone, oppStone, priorityY, priorityX)) {
+        case Advantage::COM:
+            cout << "==攻撃重視==" << endl;
+            SearchMoves = generateSearchMoves(priorityY, priorityX);
+            PredictSearchMoves = generateSearchMoves(priorityY, priorityX);
+            break;
+        case Advantage::OPP:
+            cout << "==防衛重視==" << endl;
+            SearchMoves = generateSearchMoves(priorityY, priorityX);
+            PredictSearchMoves = generateSearchMoves(priorityY, priorityX);
+            break;
+        case Advantage::DRAW:
+            PredictSearchMoves.assign(SPIRAL_MOVES.begin(), SPIRAL_MOVES.end());
+            break;
     }
 
     // 動的にソート可能なコピーを作成
@@ -318,11 +352,13 @@ pair<pair<int, int>, int> iterativeDeepening(
         // 深さごとの結果を表示（デバッグ用）
         cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
+
+        // 次の手で勝ちが確定するならすぐ処理を止める
         if (bestVal >= SCORE_FIVE && depth == 1) break;
     }
 
     // 探索対象を更新
-    SearchMoves = generateLimitMoves(bestMove.first, bestMove.second);
+    SearchMoves = generateSearchMoves(bestMove.first, bestMove.second);
 
     return {bestMove, bestVal};
 }

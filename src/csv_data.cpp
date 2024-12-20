@@ -30,9 +30,9 @@ CSVData::CSVData(const string& filename) {
 
             uint32_t value = std::stoi(cell, nullptr, 2);
 
-            if (colIndex == 0) row.stones = value;
-            else if (colIndex == 1) row.empty = value;
-            else if (colIndex == 2) row.range = value;
+            if (colIndex == 0)      row.stones = value;
+            else if (colIndex == 1) row.empty  = value;
+            else if (colIndex == 2) row.range  = value;
 
             ++colIndex;
         }
