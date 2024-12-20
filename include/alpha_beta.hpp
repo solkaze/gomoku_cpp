@@ -8,5 +8,5 @@
 using namespace std;
 
 pair<pair<int, int>, int> iterativeDeepening(
-    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth, pair<int, int>& put);
+    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth);
 #endif // ALPHA_BETA_HPP

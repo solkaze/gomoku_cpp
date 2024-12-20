@@ -51,43 +51,79 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int>
     return GameSet::CONTINUE;
 }
 
-bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone);
+bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
 
 bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int stone, const vector<RowData>& masks);
 
-bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone) {
+bool checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX) {
     bool comChanceThree = false;
-    bool comChanceFour = false;
+    bool comChanceFour  = false;
     bool oppChanceThree = false;
-    bool oppChanceFour = false;
-    for (int x = 0; x < BOARD_SIZE; ++x) {
-        for (int y = 0; y < BOARD_SIZE; ++y) {
+    bool oppChanceFour  = false;
+    int storeX = -1, storeY = -1;
+
+    for (int y = 0; y < BOARD_SIZE; ++y) {
+        for (int x = 0; x < BOARD_SIZE; ++x) {
             // 空きセルスキップ
             if (board[y][x] == comStone) {
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    if (isOpenSequence(board, y, x, dy, dx, comStone, FOUR_OPEN_MASK)) comChanceFour = true;
-                    if (comChanceFour) break;
-                    if (isOpenSequence(board, y, x, dy, dx, comStone, FOUR_CLOSE_MASK)) comChanceFour = true;
-                    if (comChanceFour) break;
-                    if (isOpenSequence(board, y, x, dy, dx, comStone, THREE_OPEN_MASK)) comChanceThree = true;
-                    if (comChanceThree) break;
+                    if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_OPEN_MASK)) {
+                        comChanceFour = true;
+                        break;
+                    }
+                    if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_CLOSE_MASK)) {
+                        comChanceFour = true;
+                        break;
+                    }
+                    if (!comChanceThree && isOpenSequence(board, y, x, dy, dx, comStone, THREE_OPEN_MASK)) {
+                        comChanceThree = true;
+                        break;
+                    }
                 }
             } else if (board[y][x] == oppStone) {
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    if (isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_OPEN_MASK)) oppChanceFour = true;
-                    if (oppChanceFour) break;
-                    if (isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_CLOSE_MASK)) oppChanceFour = true;
-                    if (oppChanceFour) break;
-                    if (isOpenSequence(board, y, x, dy, dx, oppStone, THREE_OPEN_MASK)) oppChanceThree = true;
-                    if (oppChanceThree) break;
+                    if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_OPEN_MASK)) {
+                        oppChanceFour = true;
+                        storeY = y;
+                        storeX = x;
+                        break;
+                    }
+                    if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_CLOSE_MASK)) {
+                        oppChanceFour = true;
+                        storeY = y;
+                        storeX = x;
+                        break;
+                    }
+                    if (!oppChanceThree && isOpenSequence(board, y, x, dy, dx, oppStone, THREE_OPEN_MASK)) {
+                        oppChanceThree = true;
+                        storeY = y;
+                        storeX = x;
+                        break;
+                    }
                 }
             }
         }
     }
-    if (comChanceFour) return false;
-    else if (oppChanceFour) return true;
-    else if (comChanceThree) return false;
-    else if (oppChanceThree) return true;
+
+    if (comChanceFour) {
+        putY = -1;
+        putX = -1;
+        return false;
+    } else if (oppChanceFour) {
+        putY = storeY;
+        putX = storeX;
+        return true;
+    } else if (comChanceThree) {
+        putY = -1;
+        putX = -1;
+    } else if (oppChanceThree) {
+        putY = storeY;
+        putX = storeX;
+        return true;
+    } else {
+        putY = -1;
+        putX = -1;
+    }
 
     return false;
 }

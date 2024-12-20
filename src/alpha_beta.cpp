@@ -284,14 +284,16 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
 
 // 反復深化探索
 pair<pair<int, int>, int> iterativeDeepening(
-    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth, pair<int, int>& put) {
+    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
     pair<int, int> bestMove = {-1, -1}; // 最適手
     int bestVal = -INF;                // 初期評価値
 
     // 脅威を検出したら相手の置いた手を中心に探索
-    if (checkThreat(board,comStone, oppStone)) {
+    int threatY = -1, threatX = -1;
+    if (checkThreat(board, comStone, oppStone, threatY, threatX)) {
         cout << "脅威検出" << endl;
-        LimitMoves = generateLimitMoves(put.first, put.second);
+        cout << "脅威の手: " << threatY << ", " << threatX << endl;
+        LimitMoves = generateLimitMoves(threatY, threatX);
     }
 
     // 動的にソート可能なコピーを作成
