@@ -17,12 +17,12 @@ void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
     }
 }
 
-pair<int, int> BitBoard::putOutBitLine(const int y, const int x, const int dy, const int dx,
+pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const int dy, const int dx,
                                         const int start, const int end) const {
     if (start > end) return {-1, -1};
 
-    int bitLine = 0;
-    int emptyLine = 0;
+    uint32_t bitLine = 0;
+    uint32_t emptyLine = 0;
 
     for (int step = start; step <= end; ++step) {
         int ny = y + dy * step;
@@ -37,9 +37,9 @@ pair<int, int> BitBoard::putOutBitLine(const int y, const int x, const int dy, c
         uint64_t mask = (1ULL << shift);
 
         if (bitBoard[index] & mask) {
-            bitLine |= (1 << (step - start));
+            bitLine |= (1U << (step - start));
         } else if ((*emptyBoard)[index] & mask) {
-            emptyLine |= (1 << (step - start));
+            emptyLine |= (1U << (step - start));
         }
     }
 

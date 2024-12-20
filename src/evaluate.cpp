@@ -138,9 +138,9 @@ bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int s
         if (ny < 0 || ny >= BOARD_SIZE || nx < 0 || nx >= BOARD_SIZE) continue;
 
         if (board[ny][nx] == stone) {
-            line |= (1 << (step + 2));
+            line |= (1U << (step + 2));
         } else if (board[ny][nx] == STONE_SPACE) {
-            empty |= (1 << (step + 2));
+            empty |= (1U << (step + 2));
         }
     }
 
@@ -181,10 +181,10 @@ bool evaluateLineScore(int line, int empty, const vector<RowData>& masks) {
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent) {
     int score = 0;
-    uint8_t countComOpenFour = 0;
+    uint8_t countComOpenFour  = 0;
     uint8_t countComOpenThree = 0;
 
-    uint8_t countOppOpenFour = 0;
+    uint8_t countOppOpenFour  = 0;
     uint8_t countOppOpenThree = 0;
 
     for (int y = 0; y < BOARD_SIZE; ++y) {

@@ -36,9 +36,6 @@ constexpr int SEGMENT_SIZE = 64;
 // 探索範囲の最大値
 constexpr int LIMIT_SEARCH_MOVE = 81;
 
-// 探索を切り替えるタイミング
-constexpr int SWITCHING_SEARCH_MOVE = 20;
-
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
     {0,  1},

@@ -34,9 +34,9 @@ pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const
         uint64_t mask = (1ULL << shift);
 
         if (bitBoard[index] & mask) {
-            bitLine |= (1 << (step - start));
+            bitLine |= (1U << (step - start));
         } else if ((*emptyBoard)[index] & mask) {
-            emptyLine |= (1 << (step - start));
+            emptyLine |= (1U << (step - start));
         }
     }
 
