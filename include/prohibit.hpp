@@ -1,6 +1,8 @@
 #ifndef PROHIBITED_HPP
 #define PROHIBITED_HPP
 
+#include "bit_board.hpp"
+
 // 禁じ手
 constexpr bool PROHIBITED_THREE_THREE  = true;
 constexpr bool PROHIBITED_FOUR_FOUR    = true;

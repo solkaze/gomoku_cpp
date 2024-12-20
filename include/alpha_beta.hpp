@@ -1,10 +1,12 @@
 #ifndef ALPHA_BETA_HPP
 #define ALPHA_BETA_HPP
 
-#include "common.hpp"
+#include <utility>
+
 #include "zobrist_hash.hpp"
 
-int alphaBeta(BitBoard& computer, BitBoard& opponent,
-            int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer, pair<int, int> put);
+using namespace std;
 
+pair<pair<int, int>, int> iterativeDeepening(
+    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth, pair<int, int>& put);
 #endif // ALPHA_BETA_HPP

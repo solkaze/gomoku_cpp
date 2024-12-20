@@ -1,10 +1,14 @@
 #ifndef ZOBRIST_HASH_HPP
 #define ZOBRIST_HASH_HPP
 
-#include "common.hpp"
+#include <array>
 #include <unordered_map>
 #include <mutex>
 #include <shared_mutex>
+
+#include "gomoku_ai.hpp"
+
+using namespace std;
 
 enum BoundType {
     EXACT,

@@ -4,7 +4,9 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include "common.hpp"
+#include <cstdint>
+
+using namespace std;
 
 struct RowData {
     uint32_t stones;

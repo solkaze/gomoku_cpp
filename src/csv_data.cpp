@@ -1,8 +1,6 @@
-#include <fstream>
 #include <iostream>
 #include <sstream>
 
-#include "common.hpp"
 #include "csv_data.hpp"
 
 CSVData::CSVData(const string& filename) {

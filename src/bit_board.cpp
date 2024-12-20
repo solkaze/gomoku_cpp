@@ -1,9 +1,10 @@
+#include <iostream>
+
 #include "bit_board.hpp"
-#include "gomoku.hpp"
 #include "gomoku_ai.hpp"
 
 
-void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
+void BitBoard::convertToBitboards(int board[][K_BOARD_SIZE]) {
     for (int y = 0; y < K_BOARD_SIZE; ++y) {
         for (int x = 0; x < K_BOARD_SIZE; ++x) {
             if (board[y][x] == stone) {
@@ -25,7 +26,7 @@ pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const
         int nx = x + dx * step;
 
         // 範囲外チェックを条件分岐内で行う
-        if (ny < 0 || ny >= BOARD_SIZE || nx < 0 || nx >= BOARD_SIZE) continue;
+        if (ny < 0 || ny >= K_BOARD_SIZE || nx < 0 || nx >= K_BOARD_SIZE) continue;
 
         // ビットボードのチェック（インライン化されたヘルパーを使用）
         int index = (ny * K_BOARD_SIZE + nx) / SEGMENT_SIZE;
