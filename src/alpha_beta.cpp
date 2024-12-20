@@ -7,18 +7,18 @@
 #include "alpha_beta.hpp"
 #include "evaluate.hpp"
 
-array<pair<int, int>, LIMIT_SEARCH_MOVE> generateLimitMoves(int y, int x);
+vector<pair<int, int>> generateLimitMoves(int y, int x);
 
 shared_mutex globalTTMutex;
 
-array<pair<int, int>, LIMIT_SEARCH_MOVE> LimitMoves = generateLimitMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
+vector<pair<int, int>> SearchMoves = generateLimitMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
 
-array<pair<int, int>, LIMIT_SEARCH_MOVE> generateLimitMoves(int y, int x) {
-    array<pair<int, int>, LIMIT_SEARCH_MOVE> moves{};
+vector<pair<int, int>> generateLimitMoves(int y, int x) {
+    vector<pair<int, int>> moves{};
     int cy = y, cx = x;
-    moves[0] = {cy, cx};
+    moves.push_back({cy, cx});
 
-    const int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+    constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
     int steps = 1;
     int index = 1;
 
@@ -97,7 +97,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     if (isMaximizingPlayer) {
         int maxEval = -INF;
 
-        for (const auto& [y, x] : SPIRAL_MOVES) {
+        for (const auto& [y, x] : SearchMoves) {
             if (computer.checkEmptyBit(y, x)) {
 
                 computer.setBit(y, x);
@@ -124,7 +124,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
     } else {
         int minEval = INF;
 
-        for (const auto& [y, x] : SPIRAL_MOVES) {
+        for (const auto& [y, x] : SearchMoves) {
             if (opponent.checkEmptyBit(y, x)) {
 
                 opponent.setBit(y, x);
@@ -293,11 +293,11 @@ pair<pair<int, int>, int> iterativeDeepening(
     if (checkThreat(board, comStone, oppStone, threatY, threatX)) {
         cout << "脅威検出" << endl;
         cout << "脅威の手: " << threatY << ", " << threatX << endl;
-        LimitMoves = generateLimitMoves(threatY, threatX);
+        SearchMoves = generateLimitMoves(threatY, threatX);
     }
 
     // 動的にソート可能なコピーを作成
-    vector<pair<int, int>> moves(LimitMoves.begin(), LimitMoves.end());
+    vector<pair<int, int>> moves(SearchMoves.begin(), SearchMoves.end());
 
     // 反復深化探索
     for (int depth = 1; depth <= maxDepth; ++depth) {
@@ -322,7 +322,7 @@ pair<pair<int, int>, int> iterativeDeepening(
     }
 
     // 探索対象を更新
-    LimitMoves = generateLimitMoves(bestMove.first, bestMove.second);
+    SearchMoves = generateLimitMoves(bestMove.first, bestMove.second);
 
     return {bestMove, bestVal};
 }
