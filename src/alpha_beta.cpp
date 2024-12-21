@@ -3,7 +3,6 @@
 #include <vector>
 #include <future>
 #include <algorithm>
-#include <variant>
 
 #include "alpha_beta.hpp"
 #include "evaluate.hpp"
@@ -115,16 +114,22 @@ void testPrintBoard(const BitBoard& com, const BitBoard& opp) {
     cout << endl;
 }
 
-int alphaBeta(BitBoard& computer, BitBoard& opponent,
-            int depth, int alpha, int beta, bool isMaximizingPlayer, pair<int, int> put,
-            TransportationTable& localTT) {
+int alphaBeta(
+    BitBoard& computer,
+    BitBoard& opponent,
+    int depth,
+    int alpha,
+    int beta,
+    bool isMaximizingPlayer,
+    pair<int, int> put,
+    TransportationTable& localTT) {
 
     int cachedEval;
     if (localTT.retrieveEntry(depth, alpha, beta, cachedEval, isMaximizingPlayer)) {
         return cachedEval;
     }
 
-    switch(isWin(computer, opponent, put)) {
+    switch (isWin(computer, opponent, put)) {
         case GameSet::WIN:
             return  SCORE_FIVE;
             break;
@@ -135,9 +140,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
             break;
     }
 
-    if (depth == 0) {
-        return evaluate(computer, opponent);
-    }
+    if (depth == 0) return evaluate(computer, opponent);
 
     if (isMaximizingPlayer) {
         int maxEval = -INF;
@@ -248,7 +251,6 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF,
                                             false, make_pair(y, x), localTT);
 
-
                 // ローカルTTをリストに保存
                 {
                     lock_guard<mutex> lock(mtx);
@@ -329,7 +331,7 @@ pair<pair<int, int>, int> iterativeDeepening(
     int bestVal = -INF;                 // 初期評価値
     // 脅威を検出したら相手の置いた手を中心に探索
     int priorityY = BOARD_SIZE / 2, priorityX = BOARD_SIZE / 2;
-    switch(checkAdvantage(board, comStone, oppStone, priorityY, priorityX)) {
+    switch (checkAdvantage(board, comStone, oppStone, priorityY, priorityX)) {
         case Advantage::COM:
             cout << "==攻撃重視==" << endl;
             SearchMoves = generateSearchMoves(priorityY, priorityX);

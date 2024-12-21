@@ -15,7 +15,7 @@ enum class Advantage {
     DRAW
 };
 
-constexpr int SCORE_FIVE        = 100000000;    // 5連
+constexpr int SCORE_FIVE        = 1000000000;   // 5連
 constexpr int SCORE_FOUR_OPEN   = 800000;       // 4連両端空き
 constexpr int SCORE_NEAR_WIN    = 500000;       // 4,4連 4,3連, 3,3連
 constexpr int SCORE_FOUR_JUMP   = 20000;        // 4連飛び
