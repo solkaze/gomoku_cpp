@@ -42,6 +42,11 @@ const auto THREE_CLOSE_MASK = threeCloseMask.getData();
 const auto TWO_OPEN_MASK    = twoOpenMask.getData();
 const auto SKIP_MASK        = skipMask.getData();
 
+//*====================
+//* 関数実装
+//*====================
+
+// 5連確認
 bool fiveLow(const BitBoard& bitBoard, const int y, const int x) {
 
     for(const auto& [dy, dx] : DIRECTIONS) {
@@ -56,6 +61,7 @@ bool fiveLow(const BitBoard& bitBoard, const int y, const int x) {
     return false;
 }
 
+// 禁じ手と勝利判定
 GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int> put) {
     int y = put.first;
     int x = put.second;
@@ -72,6 +78,7 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int>
     return GameSet::CONTINUE;
 }
 
+// 攻撃防御判定
 Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX) {
     bool comChanceThree = false;
     bool comChanceFour  = false;

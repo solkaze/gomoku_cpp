@@ -42,6 +42,7 @@ unordered_map<pair<int, int>, int, pair_hash> historyHeuristic;
 // スレッドの共有ロック
 shared_mutex globalTTMutex;
 
+// 探索の配列
 array<pair<int, int>, LIMIT_SEARCH_MOVE> SearchMoves = generateSearchMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
 
 
