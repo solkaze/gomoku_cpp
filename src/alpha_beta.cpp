@@ -72,6 +72,13 @@ vector<pair<int, int>> generateSearchMoves(int y, int x) {
     return moves;
 }
 
+void testPrintHistoryHeuristic(vector<pair<int, int>>& moves) {
+    for (const auto& [y, x] : moves) {
+        cout << "(" << y << ", " << x << ")->\t" << historyHeuristic[{y, x}] << endl;
+    }
+    this_thread::sleep_for(chrono::seconds(1));
+}
+
 void testPrintBoard(const BitBoard& com, const BitBoard& opp) {
     cout << "   ";
     for(int i = 0; i < BOARD_SIZE; i++) {
@@ -310,7 +317,7 @@ pair<pair<int, int>, int> iterativeDeepening(
     int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
 
     pair<int, int> bestMove = {-1, -1}; // 最適手
-    int bestVal = -INF;                // 初期評価値
+    int bestVal = -INF;                 // 初期評価値
 
     // 脅威を検出したら相手の置いた手を中心に探索
     int priorityY = -1, priorityX = -1;
@@ -341,6 +348,8 @@ pair<pair<int, int>, int> iterativeDeepening(
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
             sort(moves.begin(), moves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
+                if (a == bestMove) return true;
+                if (b == bestMove) return false;
                 return historyHeuristic[a] > historyHeuristic[b];
             });
             historyHeuristic.clear();
@@ -353,8 +362,8 @@ pair<pair<int, int>, int> iterativeDeepening(
         cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
 
-        // 次の手で勝ちが確定するならすぐ処理を止める
-        if (bestVal >= SCORE_FIVE && depth == 1) break;
+        // 勝利が確定するならすぐ処理を止める
+        if (bestVal >= SCORE_FIVE) break;
     }
 
     // 探索対象を更新
