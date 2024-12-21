@@ -13,7 +13,7 @@ bool fiveLow(const BitBoard& bitBoard, const int y, const int x);
 
 GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int> put);
 
-Advantage checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
+Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
 
 bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int stone, const vector<RowData>& masks);
 
@@ -68,7 +68,7 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int>
     return GameSet::CONTINUE;
 }
 
-Advantage checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX) {
+Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX) {
     bool comChanceThree = false;
     bool comChanceFour  = false;
     bool oppChanceThree = false;

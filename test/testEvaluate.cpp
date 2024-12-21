@@ -86,6 +86,112 @@ bool evaluateLineScore(int line, int empty, const vector<RowData>& masks) {
     return false;
 }
 
+int evaluate(const BitBoard& computer, const BitBoard& opponent) {
+    int score = 0;
+    uint8_t countComOpenFour  = 0;
+    uint8_t countComOpenThree = 0;
+
+    uint8_t countOppOpenFour  = 0;
+    uint8_t countOppOpenThree = 0;
+
+    for (int y = 0; y < BOARD_SIZE; ++y) {
+        for (int x = 0; x < BOARD_SIZE; ++x) {
+            if (computer.checkBit(y, x)) {
+                cout << "==========\n";
+                cout << "石の色\t" << (computer.getStone() == 1 ? "黒" : "白") << endl;
+                cout << "y: " << y << " x: " << x << endl;
+
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 5);
+                    cout << "-----\n";
+                    cout << "向き: ";
+                    if (dy == 0 && dx == 1) cout << "右" << endl;
+                    else if (dy == 1 && dx == 0) cout << "下" << endl;
+                    else if (dy == 1 && dx == 1) cout << "右下" << endl;
+                    else if (dy == 1 && dx == -1) cout << "左下" << endl;
+                    if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
+
+                    int preScore = score;
+                    // ４連両端空き
+                    score += evaluateLineScore(line, empty, FOUR_OPEN_MASK,   SCORE_OPEN_FOUR);
+                    if (preScore != score) {
+                        countComOpenFour++;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) return SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 4連片側空き
+                    score += evaluateLineScore(line, empty, FOUR_CLOSE_MASK,  SCORE_CLOSE_FOUR);
+                    if (preScore != score) {
+                        countComOpenFour++;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) return SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連両端空き
+                    score += evaluateLineScore(line, empty, THREE_OPEN_MASK,  SCORE_OPEN_THREE);
+                    if (preScore != score) {
+                        countComOpenThree++;
+                        if (countComOpenThree >= 2 || (countComOpenThree >= 1 && countComOpenFour >= 1)) return SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連片側空き
+                    score += evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_CLOSE_THREE);
+                    if (preScore != score) continue;
+                    // 2連両端空き
+                    score += evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_OPEN_TWO);
+                }
+                cout << "\n全体スコア:\t" << score << endl;
+                cout << "==========\n";
+            } else if (opponent.checkBit(y, x)) {
+                cout << "==========\n";
+                cout << "石の色: " << (opponent.getStone() == 1 ? "黒" : "白") << endl;
+                cout << "y: " << y << " x: " << x << endl;
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -2, 5);
+                    cout << "-----\n";
+                    cout << "向き: ";
+                    if (dy == 0 && dx == 1) cout << "右" << endl;
+                    else if (dy == 1 && dx == 0) cout << "下" << endl;
+                    else if (dy == 1 && dx == 1) cout << "右下" << endl;
+                    else if (dy == 1 && dx == -1) cout << "左下" << endl;
+
+                    if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
+
+                    int preScore = score;
+                    // ４連両端空き
+                    score -= evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_OPEN_FOUR);
+                    if (preScore != score) {
+                        countOppOpenFour++;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) return -SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 4連片側空き
+                    score -= evaluateLineScore(line, empty, FOUR_CLOSE_MASK, SCORE_CLOSE_FOUR);
+                    if (preScore != score) {
+                        countOppOpenFour++;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) return -SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連両端空き
+                    score -= evaluateLineScore(line, empty, THREE_OPEN_MASK, SCORE_OPEN_THREE);
+                    if (preScore != score) {
+                        countOppOpenThree++;
+                        if (countOppOpenThree >= 2 || (countOppOpenThree >= 1 && countOppOpenFour >= 1)) return -SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連片側空き
+                    score -= evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_CLOSE_THREE);
+                    if (preScore != score) continue;
+                    // 2連両端空き
+                    score -= evaluateLineScore(line, empty, TWO_OPEN_MASK, SCORE_OPEN_TWO);
+                }
+                cout << "\n全体スコア:\t" << score << endl;
+                cout << "==========\n";
+            }
+        }
+    }
+    return score;
+}
+
 
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent) {

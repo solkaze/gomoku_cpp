@@ -321,7 +321,7 @@ pair<pair<int, int>, int> iterativeDeepening(
 
     // 脅威を検出したら相手の置いた手を中心に探索
     int priorityY = -1, priorityX = -1;
-    switch(checkThreat(board, comStone, oppStone, priorityY, priorityX)) {
+    switch(checkAdvantage(board, comStone, oppStone, priorityY, priorityX)) {
         case Advantage::COM:
             cout << "==攻撃重視==" << endl;
             SearchMoves = generateSearchMoves(priorityY, priorityX);
@@ -341,9 +341,9 @@ pair<pair<int, int>, int> iterativeDeepening(
     vector<pair<int, int>> moves(SearchMoves.begin(), SearchMoves.end());
 
     // 反復深化探索
-    for (int depth = 1; depth <= maxDepth; ++depth) {
+    for (int depth = 0; depth < maxDepth; ++depth) {
         cout << "----------\n";
-        cout << "探索深さ: " << depth << endl;
+        cout << "探索深さ: " << depth + 1 << endl;
 
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
@@ -359,7 +359,7 @@ pair<pair<int, int>, int> iterativeDeepening(
         tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
 
         // 深さごとの結果を表示（デバッグ用）
-        cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
+        cout << "深さ " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
 
         // 勝利が確定するならすぐ処理を止める

@@ -9,17 +9,17 @@ enum class GameSet {
     CONTINUE
 };
 
-enum Advantage {
+enum class Advantage {
     COM,
     OPP,
     DRAW
 };
 
-constexpr int SCORE_FIVE        = 1000000;
-constexpr int SCORE_NEAR_WIN    = 80000;
-constexpr int SCORE_OPEN_FOUR   = 90000;
+constexpr int SCORE_FIVE        = 10000000;
+constexpr int SCORE_OPEN_FOUR   = 8000000;
+constexpr int SCORE_NEAR_WIN    = 5000000;
 constexpr int SCORE_CLOSE_FOUR  = 10000;
-constexpr int SCORE_OPEN_THREE  = 6000;
+constexpr int SCORE_OPEN_THREE  = 5000;
 constexpr int SCORE_CLOSE_THREE = 500;
 constexpr int SCORE_OPEN_TWO    = 100;
 
@@ -28,6 +28,6 @@ GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int>
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent);
 
-Advantage checkThreat(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
+Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
 
 #endif
