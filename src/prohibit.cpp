@@ -5,6 +5,7 @@
 
 // 33禁判定
 CSVData threePrihibitCSV("data/three_prohibit_mask.csv");
+// 44禁判定
 CSVData fourProhibitCSV("data/four_prohibit_mask.csv");
 
 const auto THREE_PROHIBIT_MASK = threePrihibitCSV.getData();
