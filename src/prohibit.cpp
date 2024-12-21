@@ -4,11 +4,11 @@
 #include "csv_data.hpp"
 
 // 33禁判定
-CSVData threeOpenCSV("data/three_prohibit_mask.csv");
-CSVData fourOpenCSV("data/four_prohibit_mask.csv");
+CSVData threePrihibitCSV("data/three_prohibit_mask.csv");
+CSVData fourProhibitCSV("data/four_prohibit_mask.csv");
 
-const auto THREE_OPEN_MASK = threeOpenCSV.getData();
-const auto FOUR_OPEN_MASK = fourOpenCSV.getData();
+const auto THREE_PROHIBIT_MASK = threePrihibitCSV.getData();
+const auto FOUR_PROHIBIT_MASK = fourProhibitCSV.getData();
 
 bool isProhibitedThreeThree(const BitBoard& bitBoard, int y, int x) {
     int threeCount = 0;
@@ -16,7 +16,7 @@ bool isProhibitedThreeThree(const BitBoard& bitBoard, int y, int x) {
     for (const auto& [dy, dx] : DIRECTIONS) {
         auto [line, empty] = bitBoard.putOutBitLine(y, x, dy, dx, -4, 4);
 
-        for (const auto& mask : THREE_OPEN_MASK) {
+        for (const auto& mask : THREE_PROHIBIT_MASK) {
             uint32_t filteredLine = line & mask.range;
             if (filteredLine != mask.stones) continue;
 
@@ -35,7 +35,7 @@ bool isProhibitedFourFour(const BitBoard& bitBoard, int y, int x) {
     for (const auto& [dy, dx] : DIRECTIONS) {
         auto [line, empty] = bitBoard.putOutBitLine(y, x, dy, dx, -5, 5);
 
-        for (const auto& mask : FOUR_OPEN_MASK) {
+        for (const auto& mask : FOUR_PROHIBIT_MASK) {
             uint32_t filteredLine = line & mask.range;
             if (filteredLine != mask.stones) continue;
 

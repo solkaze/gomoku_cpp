@@ -76,7 +76,7 @@ int main() {
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1行目
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 2行目
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 3行目
-        {0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 4行目
+        {0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0}, // 4行目
         {0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 5行目
         {0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 6行目
         {0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 7行目
@@ -98,10 +98,18 @@ int main() {
     // cout << endl;
     // cout << "相手用ボード" << endl;
     // subBoard.testPrintBoard();
-    if (checkChance(board, 1, 2)) {
-        cout << "脅威あり" << endl;
-    } else {
-        cout << "脅威なし" << endl;
+    evaluate(bitBoard, subBoard);
+    int a, b;
+    switch (checkAdvantage(board, 1, 2,a,b)) {
+        case Advantage::COM:
+            cout << "脅威なし" << endl;
+            break;
+        case Advantage::OPP:
+            cout << "脅威あり" << endl;
+            break;
+        case Advantage::DRAW:
+            cout << "脅威なし" << endl;
+            break;
     }
     // cout << "(y x)に石を置きます" << endl;
 
