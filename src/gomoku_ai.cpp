@@ -31,11 +31,11 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
             *pos_y = BOARD_SIZE / 2;
             *pos_x = BOARD_SIZE / 2;
         } else {
-            // 初手として角を指定
+            // 初手としてすこし近くの値を指定
             *pos_y = BOARD_SIZE / 2 + 2;
             *pos_x = BOARD_SIZE / 2 + 1;
         }
-        cout << "\n==========\n";
+        cout << "==========\n";
         cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )\n";
         cout << "==========" << endl;
 
@@ -59,7 +59,7 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
 
     *pos_y = bestMove.first;
     *pos_x = bestMove.second;
-    cout << "\n==========\n";
+    cout << "==========\n";
     cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )\n";
     cout << "==========" << endl;
     return 0;

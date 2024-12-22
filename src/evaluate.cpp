@@ -232,12 +232,11 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
     int score = 0;
     uint8_t countComOpenFour  = 0;
     uint8_t countComOpenThree = 0;
-
     uint8_t countOppOpenFour  = 0;
     uint8_t countOppOpenThree = 0;
 
-    for (int y = 0; y < BOARD_SIZE; ++y) {
-        for (int x = 0; x < BOARD_SIZE; ++x) {
+    for (int y = 0; y < BOARD_SIZE - 2; ++y) {
+        for (int x = 0; x < BOARD_SIZE - 2; ++x) {
             if (computer.checkBit(y, x)) {
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 5);

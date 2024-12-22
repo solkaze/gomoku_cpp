@@ -350,7 +350,7 @@ pair<pair<int, int>, int> iterativeDeepening(
     // 反復深化探索
     for (int depth = 0; depth < maxDepth; ++depth) {
         cout << "----------\n";
-        cout << "探索深さ: " << depth + 1 << endl;
+        cout << "探索深度: " << depth + 1 << endl;
 
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
@@ -366,7 +366,7 @@ pair<pair<int, int>, int> iterativeDeepening(
         tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
 
         // 深さごとの結果を表示（デバッグ用）
-        cout << "深さ " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
+        cout << "深度 " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
         cout << "----------\n";
 

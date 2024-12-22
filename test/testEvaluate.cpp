@@ -98,8 +98,8 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
     uint8_t countOppOpenFour  = 0;
     uint8_t countOppOpenThree = 0;
 
-    for (int y = 0; y < BOARD_SIZE; ++y) {
-        for (int x = 0; x < BOARD_SIZE; ++x) {
+    for (int y = 0; y < BOARD_SIZE - 2; ++y) {
+        for (int x = 0; x < BOARD_SIZE - 2; ++x) {
             if (computer.checkBit(y, x)) {
                 cout << "==========\n";
                 cout << "石の色\t" << (computer.getStone() == 1 ? "黒" : "白") << endl;
