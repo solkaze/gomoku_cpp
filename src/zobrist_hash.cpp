@@ -5,6 +5,7 @@
 array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> TransportationTable::zobristTable;
 
 unordered_map<uint64_t, TTEntry> TransportationTable::globalTable;
+
 shared_mutex TransportationTable::globalTableMutex;
 
 void TransportationTable::initializeZobristTable() {

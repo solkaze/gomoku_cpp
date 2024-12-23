@@ -50,7 +50,7 @@ const auto SKIP_MASK        = skipMask.getData();
 bool fiveLow(const BitBoard& bitBoard, const int y, const int x) {
 
     for(const auto& [dy, dx] : DIRECTIONS) {
-        auto [line, _ ] = bitBoard.putOutBitLine(y, x, dy, dx, -4, 4);
+        auto [line, _ ] = bitBoard.putOutBitLine(y, x, dy, dx, -4, 5);
 
         for (const auto& mask : FIVE_LOW_MASK) {
             uint32_t sarchLine = line & mask.range;
@@ -239,7 +239,7 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
         for (int x = 0; x < BOARD_SIZE - 2; ++x) {
             if (computer.checkBit(y, x)) {
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 5);
+                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 6);
 
                     if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
 
@@ -288,7 +288,7 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
             } else if (opponent.checkBit(y, x)) {
 
                 for (const auto& [dy, dx] : DIRECTIONS) {
-                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -2, 5);
+                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -2, 6);
 
                     if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
 

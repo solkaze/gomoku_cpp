@@ -21,7 +21,7 @@ pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const
     uint32_t bitLine = 0;
     uint32_t emptyLine = 0;
 
-    for (int step = start; step <= end; ++step) {
+    for (int step = start; step < end; ++step) {
         int ny = y + dy * step;
         int nx = x + dx * step;
 
