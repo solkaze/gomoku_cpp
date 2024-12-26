@@ -325,57 +325,57 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
 }
 // 反復深化探索
 pair<pair<int, int>, int> iterativeDeepening(
-    int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
+  int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
 
-    pair<int, int> bestMove = {-1, -1}; // 最適手
-    int bestVal = -INF;                 // 初期評価値
-    // 脅威を検出したら相手の置いた手を中心に探索
-    int priorityY = BOARD_SIZE / 2, priorityX = BOARD_SIZE / 2;
-    switch (checkAdvantage(board, comStone, oppStone, priorityY, priorityX)) {
-        case Advantage::COM:
-            cout << "==攻撃重視==" << endl;
-            SearchMoves = generateSearchMoves(priorityY, priorityX);
-            break;
-        case Advantage::OPP:
-            cout << "==防衛重視==" << endl;
-            SearchMoves = generateSearchMoves(priorityY, priorityX);
-            break;
-        case Advantage::DRAW:
-            break;
+  pair<int, int> bestMove = {-1, -1}; // 最適手
+  int bestVal = -INF;                 // 初期評価値
+  // 脅威を検出したら相手の置いた手を中心に探索
+  int priorityY = BOARD_SIZE / 2, priorityX = BOARD_SIZE / 2;
+  switch (checkAdvantage(board, comStone, oppStone, priorityY, priorityX)) {
+    case Advantage::COM:
+      cout << "==攻撃重視==" << endl;
+      SearchMoves = generateSearchMoves(priorityY, priorityX);
+      break;
+    case Advantage::OPP:
+      cout << "==防衛重視==" << endl;
+      SearchMoves = generateSearchMoves(priorityY, priorityX);
+      break;
+    case Advantage::DRAW:
+      break;
+  }
+
+  // 動的にソート可能なコピーを作成
+  vector<pair<int, int>> moves(SearchMoves.begin(), SearchMoves.end());
+
+  // 反復深化探索
+  for (int depth = 0; depth < maxDepth; ++depth) {
+    cout << "----------\n";
+    cout << "探索深度: " << depth + 1 << endl;
+
+    // 前回の最適手を基にソート（初回はそのまま）
+    if (bestMove.first != -1 && bestMove.second != -1) {
+      sort(moves.begin(), moves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
+        if (a == bestMove) return true;
+        if (b == bestMove) return false;
+        return historyHeuristic[a] > historyHeuristic[b];
+      });
+      historyHeuristic.clear();
     }
 
-    // 動的にソート可能なコピーを作成
-    vector<pair<int, int>> moves(SearchMoves.begin(), SearchMoves.end());
+    // 深さごとの最適手を探索
+    tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
 
-    // 反復深化探索
-    for (int depth = 0; depth < maxDepth; ++depth) {
-        cout << "----------\n";
-        cout << "探索深度: " << depth + 1 << endl;
+    // 深さごとの結果を表示（デバッグ用）
+    cout << "深度 " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
+    cout << "評価値: " << bestVal << endl;
+    cout << "----------\n";
 
-        // 前回の最適手を基にソート（初回はそのまま）
-        if (bestMove.first != -1 && bestMove.second != -1) {
-            sort(moves.begin(), moves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
-                if (a == bestMove) return true;
-                if (b == bestMove) return false;
-                return historyHeuristic[a] > historyHeuristic[b];
-            });
-            historyHeuristic.clear();
-        }
+    // 勝利が確定するならすぐ処理を止める
+    if (bestVal >= SCORE_FIVE) break;
+  }
 
-        // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
+  // 探索対象を更新
+  SearchMoves = generateSearchMoves(bestMove.first, bestMove.second);
 
-        // 深さごとの結果を表示（デバッグ用）
-        cout << "深度 " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
-        cout << "評価値: " << bestVal << endl;
-        cout << "----------\n";
-
-        // 勝利が確定するならすぐ処理を止める
-        if (bestVal >= SCORE_FIVE) break;
-    }
-
-    // 探索対象を更新
-    SearchMoves = generateSearchMoves(bestMove.first, bestMove.second);
-
-    return {bestMove, bestVal};
+  return {bestMove, bestVal};
 }

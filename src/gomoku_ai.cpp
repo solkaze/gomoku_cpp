@@ -30,16 +30,13 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
             // 初手として中央を指定
             *pos_y = BOARD_SIZE / 2;
             *pos_x = BOARD_SIZE / 2;
-        } else {
-            // 初手としてすこし近くの値を指定
-            *pos_y = BOARD_SIZE / 2 + 2;
-            *pos_x = BOARD_SIZE / 2 + 1;
-        }
-        cout << "==========\n";
-        cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )\n";
-        cout << "==========" << endl;
 
-        return 0;
+            cout << "==========\n";
+            cout << "置いた位置:( " << *pos_x << ", " << *pos_y << " )\n";
+            cout << "==========" << endl;
+            return 0;
+        }
+
     }
 
     auto start = chrono::high_resolution_clock::now();
@@ -51,9 +48,9 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     pair<int, int> bestMove = findBestMove(board, comStone, oppStone);
 
     auto end = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
     cout << "----------\n";
-    cout << "処理時間: " << duration.count() << " ms\n";
+    cout << "処理時間: " << duration << "ミリ秒\n";
     cout << "----------\n";
 
 
