@@ -23,66 +23,66 @@ struct TTEntry {
 };
 
 class TransportationTable {
-  private:
+    private:
 
-    static array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> zobristTable; // Zobristハッシュテーブル
+        static array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> zobristTable; // Zobristハッシュテーブル
 
-    static unordered_map<uint64_t, TTEntry> globalTable;
-    static shared_mutex globalTableMutex; // 読み取り用のロック
+        static unordered_map<uint64_t, TTEntry> globalTable;
+        static shared_mutex globalTableMutex; // 読み取り用のロック
 
-    static void initializeZobristTable();
+        static void initializeZobristTable();
 
-    unordered_map<uint64_t, TTEntry> table;
+        unordered_map<uint64_t, TTEntry> table;
 
-    uint64_t currentHashKey;
+        uint64_t currentHashKey;
 
-  public:
-    TransportationTable() = delete;
+    public:
+        TransportationTable() = delete;
 
-    TransportationTable(int board[][BOARD_SIZE]) : table{}, currentHashKey(0) {
-      static once_flag flag;
-      call_once(flag, initializeZobristTable);
+        TransportationTable(int board[][BOARD_SIZE]) : table{}, currentHashKey(0) {
+            static once_flag flag;
+            call_once(flag, initializeZobristTable);
 
-      // ハッシュキーの初期化
-      for (int y = 0; y < BOARD_SIZE; ++y) {
-        for (int x = 0; x < BOARD_SIZE; ++x) {
-          int stone = board[y][x]; // 石の種類（0: 空, 1: 黒, 2: 白）
-          if (stone != 0) {
-            currentHashKey ^= zobristTable[y][x][stone - 1];
-          }
+            // ハッシュキーの初期化
+            for (int y = 0; y < BOARD_SIZE; ++y) {
+                for (int x = 0; x < BOARD_SIZE; ++x) {
+                    int stone = board[y][x]; // 石の種類（0: 空, 1: 黒, 2: 白）
+                    if (stone != 0) {
+                        currentHashKey ^= zobristTable[y][x][stone - 1];
+                    }
+                }
+            }
         }
-      }
-    }
 
-    void updateHashKey(int player, const int y, const int x) {
-      currentHashKey ^= zobristTable[y][x][player - 1];
-    }
+        void updateHashKey(int player, const int y, const int x) {
+            currentHashKey ^= zobristTable[y][x][player - 1];
+        }
 
-    uint64_t getHashKey() const {
-      return currentHashKey;
-    }
+        uint64_t getHashKey() const {
+            return currentHashKey;
+        }
 
-    void storeEntry(int dipth, int score, BoundType flag) {
-      table[currentHashKey] = {score, dipth, flag};
-    }
+        void storeEntry(int dipth, int score, BoundType flag) {
+            table[currentHashKey] = {score, dipth, flag};
+        }
 
-    bool retrieveEntry(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
+        bool retrieveEntry(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
 
-    bool retrieveEntryFromGlobal(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
+        bool retrieveEntryFromGlobal(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
 
-    void mergeTo() const;
+        void mergeTo() const;
 
-    void clear() {
-      table.clear();
-    }
+        void clear() {
+            table.clear();
+        }
 
-    int getTableSize() const {
-      return table.size();
-    }
+        int getTableSize() const {
+            return table.size();
+        }
 
-    static int getGlobalTableSize() {
-      return globalTable.size();
-    }
+        static int getGlobalTableSize() {
+            return globalTable.size();
+        }
 };
 
 #endif

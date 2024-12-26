@@ -38,35 +38,35 @@ constexpr int LIMIT_SEARCH_MOVE = 81;
 
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{
-  {0,  1},
-  {1,  0},
-  {1,  1},
-  {1, -1}
+    {0,  1},
+    {1,  0},
+    {1,  1},
+    {1, -1}
 }};
 
 // コンパイル時に自動生成
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
-  array<pair<int, int>, TOTAL_CELLS> moves{};
-  int cy = K_BOARD_SIZE / 2, cx = K_BOARD_SIZE / 2;
-  moves[0] = {cy, cx};
+    array<pair<int, int>, TOTAL_CELLS> moves{};
+    int cy = K_BOARD_SIZE / 2, cx = K_BOARD_SIZE / 2;
+    moves[0] = {cy, cx};
 
-  constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-  int steps = 1;
-  int index = 1;
+    constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+    int steps = 1;
+    int index = 1;
 
-  while (index < TOTAL_CELLS) {
-    for (int i = 0; i < 4; ++i) {
-      for (int j = 0; j < steps && index < TOTAL_CELLS; ++j) {
-        cy += directions[i][0];
-        cx += directions[i][1];
-        if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 && cx < K_BOARD_SIZE) {
-          moves[index++] = {cy, cx};
+    while (index < TOTAL_CELLS) {
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < steps && index < TOTAL_CELLS; ++j) {
+                cy += directions[i][0];
+                cx += directions[i][1];
+                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 && cx < K_BOARD_SIZE) {
+                    moves[index++] = {cy, cx};
+                }
+            }
+            if (i % 2 == 1) ++steps;
         }
-      }
-      if (i % 2 == 1) ++steps;
     }
-  }
-  return moves;
+    return moves;
 }
 
 // グローバル変数として初期化

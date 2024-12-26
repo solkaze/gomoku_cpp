@@ -230,113 +230,112 @@ bool evaluateLineScore(int line, int empty, const vector<RowData>& masks) {
 
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent) {
-  int score = 0;
-  uint8_t countComOpenFour  = 0;
-  uint8_t countComOpenThree = 0;
-  uint8_t countOppOpenFour  = 0;
-  uint8_t countOppOpenThree = 0;
+    int score = 0;
+    uint8_t countComOpenFour  = 0;
+    uint8_t countComOpenThree = 0;
+    uint8_t countOppOpenFour  = 0;
+    uint8_t countOppOpenThree = 0;
 
-  for (int y = 0; y < BOARD_SIZE - 2; ++y) {
-    for (int x = 0; x < BOARD_SIZE - 2; ++x) {
-      if (computer.checkBit(y, x)) {
-        for (const auto& [dy, dx] : DIRECTIONS) {
-            auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 6);
+    for (int y = 0; y < BOARD_SIZE - 2; ++y) {
+        for (int x = 0; x < BOARD_SIZE - 2; ++x) {
+            if (computer.checkBit(y, x)) {
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 6);
 
-            if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
+                    if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
 
-            int preScore = score;
-            // ４連両端空き
-            score += evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_FOUR_OPEN);
-            if (preScore != score) {
-              countComOpenFour++;
-              if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
-              else continue;
+                    int preScore = score;
+                    // ４連両端空き
+                    score += evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_FOUR_OPEN);
+                    if (preScore != score) {
+                        countComOpenFour++;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 4連飛び
+                    score += evaluateLineScore(line, empty, FOUR_JUMP_MASK, SCORE_FOUR_JUMP);
+                    if (preScore != score) {
+                        countComOpenFour++;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 4連片側空き
+                    score += evaluateLineScore(line, empty, FOUR_CLOSE_MASK,  SCORE_FOUR_CLOSE);
+                    if (preScore != score) {
+                        countComOpenFour++;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連両端空き
+                    score += evaluateLineScore(line, empty, THREE_OPEN_MASK,  SCORE_THREE_OPEN);
+                    if (preScore != score) {
+                        countComOpenThree++;
+                        if (countComOpenThree >= 2 || (countComOpenThree >= 1 && countComOpenFour >= 1)) score += SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連飛び
+                    score += evaluateLineScore(line, empty, THREE_JUMP_MASK, SCORE_THREE_JUMP);
+                    if (preScore != score) {
+                        countComOpenThree++;
+                        if (countComOpenThree >= 2 || (countComOpenThree >= 1 && countComOpenFour >= 1)) score += SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連片側空き
+                    score += evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_THREE_CLOSE);
+                    if (preScore != score) continue;
+                    // 2連両端空き
+                    score += evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_TWO_OPEN);
+                }
+            } else if (opponent.checkBit(y, x)) {
+                for (const auto& [dy, dx] : DIRECTIONS) {
+                    auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -2, 6);
+
+                    if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
+
+                    int preScore = score;
+                    // ４連両端空き
+                    score -= evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_FOUR_OPEN);
+                    if (preScore != score) {
+                        countOppOpenFour++;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 4連飛び
+                    score -= evaluateLineScore(line, empty, FOUR_JUMP_MASK, SCORE_FOUR_JUMP);
+                    if (preScore != score) {
+                        countOppOpenFour++;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 4連片側空き
+                    score -= evaluateLineScore(line, empty, FOUR_CLOSE_MASK, SCORE_FOUR_CLOSE);
+                    if (preScore != score) {
+                        countOppOpenFour++;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連両端空き
+                    score -= evaluateLineScore(line, empty, THREE_OPEN_MASK, SCORE_THREE_OPEN);
+                    if (preScore != score) {
+                        countOppOpenThree++;
+                        if (countOppOpenThree >= 2 || (countOppOpenThree >= 1 && countOppOpenFour >= 1)) score -= SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連飛び
+                    score -= evaluateLineScore(line, empty, THREE_JUMP_MASK, SCORE_THREE_JUMP);
+                    if (preScore != score) {
+                        countOppOpenThree++;
+                        if (countOppOpenThree >= 2 || (countOppOpenThree >= 1 && countOppOpenFour >= 1)) score -= SCORE_NEAR_WIN;
+                        else continue;
+                    }
+                    // 3連片側空き
+                    score -= evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_THREE_CLOSE);
+                    if (preScore != score) continue;
+                    // 2連両端空き
+                    score -= evaluateLineScore(line, empty, TWO_OPEN_MASK, SCORE_TWO_OPEN);
+                }
             }
-            // 4連飛び
-            score += evaluateLineScore(line, empty, FOUR_JUMP_MASK, SCORE_FOUR_JUMP);
-            if (preScore != score) {
-              countComOpenFour++;
-              if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
-              else continue;
-            }
-            // 4連片側空き
-            score += evaluateLineScore(line, empty, FOUR_CLOSE_MASK,  SCORE_FOUR_CLOSE);
-            if (preScore != score) {
-              countComOpenFour++;
-              if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
-              else continue;
-            }
-            // 3連両端空き
-            score += evaluateLineScore(line, empty, THREE_OPEN_MASK,  SCORE_THREE_OPEN);
-            if (preScore != score) {
-              countComOpenThree++;
-              if (countComOpenThree >= 2 || (countComOpenThree >= 1 && countComOpenFour >= 1)) score += SCORE_NEAR_WIN;
-              else continue;
-            }
-            // 3連飛び
-            score += evaluateLineScore(line, empty, THREE_JUMP_MASK, SCORE_THREE_JUMP);
-            if (preScore != score) {
-              countComOpenThree++;
-              if (countComOpenThree >= 2 || (countComOpenThree >= 1 && countComOpenFour >= 1)) score += SCORE_NEAR_WIN;
-              else continue;
-            }
-            // 3連片側空き
-            score += evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_THREE_CLOSE);
-            if (preScore != score) continue;
-            // 2連両端空き
-            score += evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_TWO_OPEN);
         }
-      } else if (opponent.checkBit(y, x)) {
-
-        for (const auto& [dy, dx] : DIRECTIONS) {
-          auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -2, 6);
-
-          if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
-
-          int preScore = score;
-          // ４連両端空き
-          score -= evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_FOUR_OPEN);
-          if (preScore != score) {
-            countOppOpenFour++;
-            if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
-            else continue;
-          }
-          // 4連飛び
-          score -= evaluateLineScore(line, empty, FOUR_JUMP_MASK, SCORE_FOUR_JUMP);
-          if (preScore != score) {
-            countOppOpenFour++;
-            if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
-            else continue;
-          }
-          // 4連片側空き
-          score -= evaluateLineScore(line, empty, FOUR_CLOSE_MASK, SCORE_FOUR_CLOSE);
-          if (preScore != score) {
-            countOppOpenFour++;
-            if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
-            else continue;
-          }
-          // 3連両端空き
-          score -= evaluateLineScore(line, empty, THREE_OPEN_MASK, SCORE_THREE_OPEN);
-          if (preScore != score) {
-            countOppOpenThree++;
-            if (countOppOpenThree >= 2 || (countOppOpenThree >= 1 && countOppOpenFour >= 1)) score -= SCORE_NEAR_WIN;
-            else continue;
-          }
-          // 3連飛び
-          score -= evaluateLineScore(line, empty, THREE_JUMP_MASK, SCORE_THREE_JUMP);
-          if (preScore != score) {
-            countOppOpenThree++;
-            if (countOppOpenThree >= 2 || (countOppOpenThree >= 1 && countOppOpenFour >= 1)) score -= SCORE_NEAR_WIN;
-            else continue;
-          }
-          // 3連片側空き
-          score -= evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_THREE_CLOSE);
-          if (preScore != score) continue;
-          // 2連両端空き
-          score -= evaluateLineScore(line, empty, TWO_OPEN_MASK, SCORE_TWO_OPEN);
-        }
-      }
     }
-  }
-  return score;
+    return score;
 }
