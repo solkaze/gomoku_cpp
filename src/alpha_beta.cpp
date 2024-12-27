@@ -74,6 +74,7 @@ void testPrintBoard(const BitBoard& com, const BitBoard& opp) {
 int alphaBeta(BitBoard& computer, BitBoard& opponent,
             int depth, int alpha, int beta, TransportationTable& localTT, bool isMaximizingPlayer, pair<int, int> put) {
 
+
     int cachedEval;
     if (localTT.retrieveEntry(depth, alpha, beta, cachedEval, isMaximizingPlayer)) {
         return cachedEval;
@@ -131,7 +132,8 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent,
                 localTT.updateHashKey(opponent.getStone(), y, x);
 
                 int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, localTT, true, make_pair(y, x));
-
+                testPrintBoard(computer, opponent);
+                this_thread::sleep_for(chrono::milliseconds(200));
                 opponent.removeBit(y, x);
                 localTT.updateHashKey(opponent.getStone(), y, x);
 
@@ -313,7 +315,7 @@ pair<pair<int, int>, int> iterativeDeepening(
         }
 
         // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
+        tie(bestMove, bestVal) = searchBestMoveAtDepthNoThread(board, comStone, oppStone, moves, depth);
 
         // 深さごとの結果を表示（デバッグ用）
         cout << "深さ " << depth << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
