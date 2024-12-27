@@ -1,7 +1,7 @@
+#include "csv_data.hpp"
+
 #include <iostream>
 #include <sstream>
-
-#include "csv_data.hpp"
 
 CSVData::CSVData(const string& filename) {
     ifstream file(filename);
@@ -14,7 +14,7 @@ CSVData::CSVData(const string& filename) {
     while (getline(file, line)) {
         stringstream ss(line);
         string cell;
-        RowData row = {0, 0, 0}; // 構造体の初期化
+        RowData row = {0, 0, 0};  // 構造体の初期化
         size_t colIndex = 0;
 
         while (getline(ss, cell, ',')) {
@@ -30,9 +30,12 @@ CSVData::CSVData(const string& filename) {
 
             uint32_t value = std::stoi(cell, nullptr, 2);
 
-            if (colIndex == 0)      row.stones = value;
-            else if (colIndex == 1) row.empty  = value;
-            else if (colIndex == 2) row.range  = value;
+            if (colIndex == 0)
+                row.stones = value;
+            else if (colIndex == 1)
+                row.empty = value;
+            else if (colIndex == 2)
+                row.range = value;
 
             ++colIndex;
         }

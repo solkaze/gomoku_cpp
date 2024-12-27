@@ -1,7 +1,7 @@
 #include <array>
 
-#include "prohibit.hpp"
 #include "csv_data.hpp"
+#include "prohibit.hpp"
 
 // 33禁判定
 CSVData threePrihibitCSV("data/three_prohibit_mask.csv");
@@ -60,9 +60,12 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
 
             if (bitBoard.isInBounds(ny, nx)) break;
 
-            if (bitBoard.checkEmptyBit(ny, nx)) break;        // 空白
-            else if (bitBoard.checkBit(ny, nx)) ++longCount;  // 自分
-            else break;                                       // 相手
+            if (bitBoard.checkEmptyBit(ny, nx))
+                break;  // 空白
+            else if (bitBoard.checkBit(ny, nx))
+                ++longCount;  // 自分
+            else
+                break;  // 相手
         }
 
         // 負方向
@@ -72,9 +75,12 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
 
             if (bitBoard.isInBounds(ny, nx)) break;
 
-            if (bitBoard.checkEmptyBit(ny, nx)) break;        // 空白
-            else if (bitBoard.checkBit(ny, nx)) ++longCount;  // 自分
-            else break;                                       // 相手
+            if (bitBoard.checkEmptyBit(ny, nx))
+                break;  // 空白
+            else if (bitBoard.checkBit(ny, nx))
+                ++longCount;  // 自分
+            else
+                break;  // 相手
         }
 
         if (longCount >= 6) return true;
