@@ -1,10 +1,10 @@
+#include "bit_board.hpp"
+
 #include <iostream>
 
-#include "bit_board.hpp"
 #include "gomoku_ai.hpp"
 
-
-void BitBoard::convertToBitboards(int board[][K_BOARD_SIZE]) {
+void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
     for (int y = 0; y < K_BOARD_SIZE; ++y) {
         for (int x = 0; x < K_BOARD_SIZE; ++x) {
             if (board[y][x] == stone) {
@@ -14,14 +14,12 @@ void BitBoard::convertToBitboards(int board[][K_BOARD_SIZE]) {
     }
 }
 
-pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const int dy, const int dx,
-                                        const int start, const int end) const {
-    if (start > end) return {-1, -1};
-
+pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const int dy, const int dx, const int start,
+                                                 const int end) const {
     uint32_t bitLine = 0;
     uint32_t emptyLine = 0;
 
-    for (int step = start; step <= end; ++step) {
+    for (int step = start; step < end; ++step) {
         int ny = y + dy * step;
         int nx = x + dx * step;
 

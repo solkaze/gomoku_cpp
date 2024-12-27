@@ -1,10 +1,11 @@
-#include <random>
-
 #include "zobrist_hash.hpp"
+
+#include <random>
 
 array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> TransportationTable::zobristTable;
 
 unordered_map<uint64_t, TTEntry> TransportationTable::globalTable;
+
 shared_mutex TransportationTable::globalTableMutex;
 
 void TransportationTable::initializeZobristTable() {
@@ -52,11 +53,13 @@ bool TransportationTable::retrieveEntry(int depth, int& alpha, int& beta, int& s
             return true;
         }
     }
-    return retrieveEntryFromGlobal(depth, alpha, beta, score, isMaximizingPlayer); // 条件に合致するエントリが見つからない
+    return retrieveEntryFromGlobal(depth, alpha, beta, score,
+                                   isMaximizingPlayer);  // 条件に合致するエントリが見つからない
 }
 
-bool TransportationTable::retrieveEntryFromGlobal(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const {
-    shared_lock<shared_mutex> lock(globalTableMutex); // グローバルテーブルへのアクセスを同期
+bool TransportationTable::retrieveEntryFromGlobal(int depth, int& alpha, int& beta, int& score,
+                                                  bool isMaximizingPlayer) const {
+    shared_lock<shared_mutex> lock(globalTableMutex);  // グローバルテーブルへのアクセスを同期
     auto it = globalTable.find(currentHashKey);
     if (it != globalTable.end() && it->second.depth >= depth) {
         const TTEntry& entry = it->second;
@@ -88,12 +91,11 @@ bool TransportationTable::retrieveEntryFromGlobal(int depth, int& alpha, int& be
             return true;
         }
     }
-    return false; // 条件に合致するエントリが見つからない
+    return false;  // 条件に合致するエントリが見つからない
 }
 
-
 void TransportationTable::mergeTo() const {
-    unique_lock<shared_mutex> lock(globalTableMutex); // グローバルテーブルへのアクセスを同期
+    unique_lock<shared_mutex> lock(globalTableMutex);  // グローバルテーブルへのアクセスを同期
     for (const auto& [key, entry] : table) {
         auto it = globalTable.find(key);
         if (it == globalTable.end() || it->second.depth < entry.depth) {

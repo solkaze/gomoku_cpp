@@ -1,10 +1,10 @@
 #ifndef CSV_DATA_HPP
 #define CSV_DATA_HPP
 
+#include <cstdint>
+#include <fstream>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <cstdint>
 
 using namespace std;
 
@@ -15,21 +15,19 @@ struct RowData {
 };
 
 class CSVData {
+   private:
+    vector<RowData> data;
 
-    private:
-        vector<RowData> data;
+   public:
+    explicit CSVData(const string& filename);
 
-    public:
-        explicit CSVData(const string& filename);
+    // データを取得する
+    const vector<RowData>& getData() const {
+        return data;
+    }
 
-        // データを取得する
-        const vector<RowData>& getData() const {
-            return data;
-        }
-
-        // データを出力する
-        void printData() const;
-
+    // データを出力する
+    void printData() const;
 };
 
 #endif

@@ -3,8 +3,8 @@
 
 using namespace std;
 
-#include <numeric>
 #include <array>
+#include <numeric>
 
 #include "gomoku.hpp"
 
@@ -16,7 +16,7 @@ using namespace std;
 constexpr int INF = numeric_limits<int>::max();
 
 // アルファ・ベータ法最大深度
-constexpr int MAX_DEPTH = 3;
+constexpr int MAX_DEPTH = 5;
 
 // スレッドの最大数
 constexpr int MAX_THREADS = 8;
@@ -37,12 +37,7 @@ constexpr int SEGMENT_SIZE = 64;
 constexpr int LIMIT_SEARCH_MOVE = 81;
 
 // 評価関数用方向
-constexpr array<array<int, 2>, 4> DIRECTIONS = {{
-    {0,  1},
-    {1,  0},
-    {1,  1},
-    {1, -1}
-}};
+constexpr array<array<int, 2>, 4> DIRECTIONS = {{{0, 1}, {1, 0}, {1, 1}, {1, -1}}};
 
 // コンパイル時に自動生成
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
@@ -51,8 +46,8 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
     moves[0] = {cy, cx};
 
     constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-    int steps = 1;
-    int index = 1;
+    int steps                      = 1;
+    int index                      = 1;
 
     while (index < TOTAL_CELLS) {
         for (int i = 0; i < 4; ++i) {

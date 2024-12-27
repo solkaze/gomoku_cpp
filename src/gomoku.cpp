@@ -15,10 +15,11 @@
 int inputPutPos(int board[][BOARD_SIZE], int which, int com);
 void changeTurn(int *which_turn);
 int checkOutPos(int x, int y);
-int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE],int c44Board[][BOARD_SIZE], int *which_turn, int *com);
+int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE], int *which_turn,
+             int *com);
 void boardInit(int board[][BOARD_SIZE]);
 void boardPrint(int board[][BOARD_SIZE]);
-int gameEndProcess(int board[][BOARD_SIZE],int c33Board[][BOARD_SIZE],int c44Board[][BOARD_SIZE]);
+int gameEndProcess(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE]);
 
 int check = 3;  // 1:三三のみ 2:四四のみ 4:長連のみ 3:三三と四四 5:三三と長連
                 // 6:四四と長連 7:全部
@@ -34,15 +35,14 @@ int main() {
     int which_turn;
     int com;
 
-
     // 初期処理
-    if(gameInit(board, c33Board, c44Board,  &which_turn, &com) == 1) return 1;
+    if (gameInit(board, c33Board, c44Board, &which_turn, &com) == 1) return 1;
     boardPrint(board);
 
     //---- メインループ
-    while(1) {
+    while (1) {
         //--- 入力処理
-        if(inputPutPos(board, which_turn, com) == 1) return 1;
+        if (inputPutPos(board, which_turn, com) == 1) return 1;
 
         //--- 手番交代処理
         changeTurn(&which_turn);
@@ -51,7 +51,7 @@ int main() {
         boardPrint(board);
 
         //--- 終了判定
-        if(gameEndProcess(board,c33Board,c44Board)) {
+        if (gameEndProcess(board, c33Board, c44Board)) {
             break;
         }
     }
@@ -65,20 +65,18 @@ int inputPutPos(int board[][BOARD_SIZE], int which, int com) {
     int pos_x = -1, pos_y = -1;
     char buf[10];
 
-    if(which == com) {
+    if (which == com) {
         calcPutPos(board, com, &pos_x, &pos_y);
     } else {
         printf("%s", (which == 1) ? "● " : "○ ");
         printf("の番です。どこに置きますか x y の順に入力してください\n> ");
-        while(1) {
-            if(fgets(buf, sizeof buf, stdin) == NULL || buf[0] == '\n')
-                return 1;
-            if(sscanf(buf, "%d %d", &pos_x, &pos_y) != 2) {
+        while (1) {
+            if (fgets(buf, sizeof buf, stdin) == NULL || buf[0] == '\n') return 1;
+            if (sscanf(buf, "%d %d", &pos_x, &pos_y) != 2) {
                 printf("不正な入力です\n >");
                 continue;
             }
-            if(checkOutPos(pos_x, pos_y) &&
-                board[pos_y][pos_x] == STONE_SPACE) {
+            if (checkOutPos(pos_x, pos_y) && board[pos_y][pos_x] == STONE_SPACE) {
                 break;
             } else {
                 printf("不正な入力です\n> ");
@@ -107,17 +105,18 @@ int checkOutPos(int x, int y) {
 //-------------------------------------------------
 // ゲーム情報初期化
 //-------------------------------------------------
-int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE], int *which_turn, int *com) {
+int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE], int *which_turn,
+             int *com) {
     int in = -1;
     char buf[256];
     do {
         printf("先手を選びますか？ Yes=>1 No=>0\n> ");
-        if(fgets(buf, sizeof buf, stdin) == NULL || buf[0] == '\n') return 1;
+        if (fgets(buf, sizeof buf, stdin) == NULL || buf[0] == '\n') return 1;
 
-        if(sscanf(buf, "%d", &in) != 1) {
+        if (sscanf(buf, "%d", &in) != 1) {
             continue;
         }
-    } while(in != 0 && in != 1);
+    } while (in != 0 && in != 1);
 
     *com = (in == 1) ? STONE_WHITE : STONE_BLACK;
 
@@ -133,8 +132,8 @@ int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[]
 //-------------------------------------------------
 void boardInit(int board[][BOARD_SIZE]) {
     int i, j;
-    for(i = 0; i < BOARD_SIZE; i++) {
-        for(j = 0; j < BOARD_SIZE; j++) {
+    for (i = 0; i < BOARD_SIZE; i++) {
+        for (j = 0; j < BOARD_SIZE; j++) {
             board[i][j] = STONE_SPACE;
         }
     }
@@ -147,22 +146,22 @@ void boardPrint(int board[][BOARD_SIZE]) {
     int i, j;
 
     printf("   ");
-    for(i = 0; i < BOARD_SIZE; i++) {
-        if(i / 10)
+    for (i = 0; i < BOARD_SIZE; i++) {
+        if (i / 10)
             printf("%d ", i / 10);
         else
             printf("  ");
     }
     puts("");
     printf("   ");
-    for(i = 0; i < BOARD_SIZE; i++) {
+    for (i = 0; i < BOARD_SIZE; i++) {
         printf("%d ", i % 10);
     }
     puts("");
-    for(i = 0; i < BOARD_SIZE; i++) {
+    for (i = 0; i < BOARD_SIZE; i++) {
         printf("%2d ", i);
-        for(j = 0; j < BOARD_SIZE; j++) {
-            switch(board[i][j]) {
+        for (j = 0; j < BOARD_SIZE; j++) {
+            switch (board[i][j]) {
                 case STONE_SPACE:
                     printf("・");
                     break;
