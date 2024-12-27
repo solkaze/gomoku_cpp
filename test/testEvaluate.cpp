@@ -1,9 +1,11 @@
-#include "testClass.hpp"
-#include "testCsv.hpp"
 #include "testEvaluate.hpp"
-#include <iostream>
+
 #include <bitset>
 #include <iomanip>
+#include <iostream>
+
+#include "testClass.hpp"
+#include "testCsv.hpp"
 using namespace std;
 CSVData fiveLowMASK("../data/five_mask.csv");
 CSVData fourOpenMask("../data/four_open_mask.csv");
@@ -25,17 +27,17 @@ const auto THREE_CLOSE_MASK = threeCloseMask.getData();
 const auto TWO_OPEN_MASK    = twoOpenMask.getData();
 const auto SKIP_MASK        = skipMask.getData();
 
-void testPrintBoard(const BitBoard& com,const BitBoard& opp, int y, int x) {
+void testPrintBoard(const BitBoard& com, const BitBoard& opp, int y, int x) {
     cout << "   ";
-    for(int i = 0; i < BOARD_SIZE; i++) {
-        if(i / 10)
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        if (i / 10)
             printf("%d ", i / 10);
         else
             printf("  ");
     }
     cout << endl;
     cout << "   ";
-    for(int i = 0; i < BOARD_SIZE; i++) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
         cout << i % 10 << " ";
     }
     cout << endl;
@@ -53,7 +55,6 @@ void testPrintBoard(const BitBoard& com,const BitBoard& opp, int y, int x) {
                 cout << "・";
             }
             cout << "\033[0m";
-
         }
         cout << endl;
     }
@@ -91,7 +92,7 @@ bool evaluateLineScore(int line, int empty, const vector<RowData>& masks) {
 }
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent) {
-    int score = 0;
+    int score                 = 0;
     uint8_t countComOpenFour  = 0;
     uint8_t countComOpenThree = 0;
 
@@ -109,10 +110,14 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     auto [line, empty] = computer.putOutBitLine(y, x, dy, dx, -2, 5);
                     cout << "-----\n";
                     cout << "向き: ";
-                    if (dy == 0 && dx == 1) cout << "右" << endl;
-                    else if (dy == 1 && dx == 0) cout << "下" << endl;
-                    else if (dy == 1 && dx == 1) cout << "右下" << endl;
-                    else if (dy == 1 && dx == -1) cout << "左下" << endl;
+                    if (dy == 0 && dx == 1)
+                        cout << "右" << endl;
+                    else if (dy == 1 && dx == 0)
+                        cout << "下" << endl;
+                    else if (dy == 1 && dx == 1)
+                        cout << "右下" << endl;
+                    else if (dy == 1 && dx == -1)
+                        cout << "左下" << endl;
                     if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
 
                     int preScore = score;
@@ -120,42 +125,51 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     score += evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_FOUR_OPEN);
                     if (preScore != score) {
                         countComOpenFour++;
-                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
-                        else continue;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1))
+                            score += SCORE_FOUR_WIN;
+                        continue;
                     }
                     // 4連飛び
                     score += evaluateLineScore(line, empty, FOUR_JUMP_MASK, SCORE_FOUR_JUMP);
                     if (preScore != score) {
                         countComOpenFour++;
-                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
-                        else continue;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1))
+                            score += SCORE_FOUR_WIN;
+                        continue;
                     }
                     // 4連片側空き
-                    score += evaluateLineScore(line, empty, FOUR_CLOSE_MASK,  SCORE_FOUR_CLOSE);
+                    score += evaluateLineScore(line, empty, FOUR_CLOSE_MASK, SCORE_FOUR_CLOSE);
                     if (preScore != score) {
                         countComOpenFour++;
-                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1)) score += SCORE_NEAR_WIN;
-                        else continue;
+                        if (countComOpenFour >= 2 || (countComOpenFour >= 1 && countComOpenThree >= 1))
+                            score += SCORE_FOUR_WIN;
+                        continue;
                     }
                     // 3連両端空き
-                    score += evaluateLineScore(line, empty, THREE_OPEN_MASK,  SCORE_THREE_OPEN);
+                    score += evaluateLineScore(line, empty, THREE_OPEN_MASK, SCORE_THREE_OPEN);
                     if (preScore != score) {
                         countComOpenThree++;
-                        if (countComOpenThree >= 2 || (countComOpenThree >= 1 && countComOpenFour >= 1)) score += SCORE_NEAR_WIN;
-                        else continue;
+                        if (countComOpenThree >= 1 && countComOpenFour >= 1)
+                            score += SCORE_FOUR_WIN;
+                        else if (countComOpenThree >= 2)
+                            score += SCORE_THREE_WIN;
+                        continue;
                     }
                     // 3連飛び
                     score += evaluateLineScore(line, empty, THREE_JUMP_MASK, SCORE_THREE_JUMP);
                     if (preScore != score) {
                         countComOpenThree++;
-                        if (countComOpenThree >= 2 || (countComOpenThree >= 1 && countComOpenFour >= 1)) score += SCORE_NEAR_WIN;
-                        else continue;
+                        if (countComOpenThree >= 1 && countComOpenFour >= 1)
+                            score += SCORE_FOUR_WIN;
+                        else if (countComOpenThree >= 2)
+                            score += SCORE_THREE_WIN;
+                        continue;
                     }
                     // 3連片側空き
                     score += evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_THREE_CLOSE);
                     if (preScore != score) continue;
                     // 2連両端空き
-                    score += evaluateLineScore(line, empty, TWO_OPEN_MASK,    SCORE_TWO_OPEN);
+                    score += evaluateLineScore(line, empty, TWO_OPEN_MASK, SCORE_TWO_OPEN);
                 }
                 cout << "\n全体スコア:\t" << score << endl;
                 cout << "==========\n";
@@ -167,48 +181,62 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
                     auto [line, empty] = opponent.putOutBitLine(y, x, dy, dx, -2, 5);
                     cout << "-----\n";
                     cout << "向き: ";
-                    if (dy == 0 && dx == 1) cout << "右" << endl;
-                    else if (dy == 1 && dx == 0) cout << "下" << endl;
-                    else if (dy == 1 && dx == 1) cout << "右下" << endl;
-                    else if (dy == 1 && dx == -1) cout << "左下" << endl;
+                    if (dy == 0 && dx == 1)
+                        cout << "右" << endl;
+                    else if (dy == 1 && dx == 0)
+                        cout << "下" << endl;
+                    else if (dy == 1 && dx == 1)
+                        cout << "右下" << endl;
+                    else if (dy == 1 && dx == -1)
+                        cout << "左下" << endl;
 
                     if (evaluateLineScore(line, empty, SKIP_MASK)) continue;
 
                     int preScore = score;
                     // ４連両端空き
+                    // ４連両端空き
                     score -= evaluateLineScore(line, empty, FOUR_OPEN_MASK, SCORE_FOUR_OPEN);
                     if (preScore != score) {
                         countOppOpenFour++;
-                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
-                        else continue;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1))
+                            score -= SCORE_FOUR_WIN;
+                        continue;
                     }
                     // 4連飛び
                     score -= evaluateLineScore(line, empty, FOUR_JUMP_MASK, SCORE_FOUR_JUMP);
                     if (preScore != score) {
                         countOppOpenFour++;
-                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
-                        else continue;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1))
+                            score -= SCORE_FOUR_WIN;
+                        continue;
                     }
                     // 4連片側空き
                     score -= evaluateLineScore(line, empty, FOUR_CLOSE_MASK, SCORE_FOUR_CLOSE);
                     if (preScore != score) {
                         countOppOpenFour++;
-                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1)) score -= SCORE_NEAR_WIN;
-                        else continue;
+                        if (countOppOpenFour >= 2 || (countOppOpenFour >= 1 && countOppOpenThree >= 1))
+                            score -= SCORE_FOUR_WIN;
+                        continue;
                     }
                     // 3連両端空き
                     score -= evaluateLineScore(line, empty, THREE_OPEN_MASK, SCORE_THREE_OPEN);
                     if (preScore != score) {
                         countOppOpenThree++;
-                        if (countOppOpenThree >= 2 || (countOppOpenThree >= 1 && countOppOpenFour >= 1)) score -= SCORE_NEAR_WIN;
-                        else continue;
+                        if (countOppOpenThree >= 1 && countOppOpenFour >= 1)
+                            score -= SCORE_FOUR_WIN;
+                        else if (countOppOpenThree >= 2)
+                            score -= SCORE_THREE_WIN;
+                        continue;
                     }
                     // 3連飛び
                     score -= evaluateLineScore(line, empty, THREE_JUMP_MASK, SCORE_THREE_JUMP);
                     if (preScore != score) {
                         countOppOpenThree++;
-                        if (countOppOpenThree >= 2 || (countOppOpenThree >= 1 && countOppOpenFour >= 1)) return -SCORE_NEAR_WIN;
-                        else continue;
+                        if (countOppOpenThree >= 1 && countOppOpenFour >= 1)
+                            score -= SCORE_FOUR_WIN;
+                        else if (countOppOpenThree >= 2)
+                            score -= SCORE_THREE_WIN;
+                        continue;
                     }
                     // 3連片側空き
                     score -= evaluateLineScore(line, empty, THREE_CLOSE_MASK, SCORE_THREE_CLOSE);
@@ -223,8 +251,6 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
     }
     return score;
 }
-
-
 
 // int evaluate(const BitBoard& computer, const BitBoard& opponent) {
 //     int score = 0;
@@ -307,7 +333,6 @@ int evaluate(const BitBoard& computer, const BitBoard& opponent) {
 
 bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int stone, const vector<RowData>& masks);
 
-
 Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX) {
     bool comChanceThree = false;
     bool comChanceFour  = false;
@@ -323,30 +348,30 @@ Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, in
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_OPEN_MASK)) {
                         comChanceFour = true;
-                        comStoreY = y + dy;
-                        comStoreX = x + dx;
+                        comStoreY     = y + dy;
+                        comStoreX     = x + dx;
                         break;
                     } else if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_JUMP_MASK)) {
                         comChanceFour = true;
-                        comStoreY = y + dy;
-                        comStoreX = x + dx;
+                        comStoreY     = y + dy;
+                        comStoreX     = x + dx;
                         break;
                     } else if (!comChanceFour && isOpenSequence(board, y, x, dy, dx, comStone, FOUR_CLOSE_MASK)) {
                         comChanceFour = true;
-                        comStoreY = y + dy;
-                        comStoreX = x + dx;
+                        comStoreY     = y + dy;
+                        comStoreX     = x + dx;
                         break;
                     } else if (!comChanceFour && !comChanceThree &&
-                                isOpenSequence(board, y, x, dy, dx, comStone, THREE_OPEN_MASK)) {
+                               isOpenSequence(board, y, x, dy, dx, comStone, THREE_OPEN_MASK)) {
                         comChanceThree = true;
-                        comStoreY = y + dy;
-                        comStoreX = x + dx;
+                        comStoreY      = y + dy;
+                        comStoreX      = x + dx;
                         break;
                     } else if (!comChanceFour && !comChanceThree &&
-                                isOpenSequence(board, y, x, dy, dx, comStone, THREE_JUMP_MASK)) {
+                               isOpenSequence(board, y, x, dy, dx, comStone, THREE_JUMP_MASK)) {
                         comChanceThree = true;
-                        comStoreY = y + dy;
-                        comStoreX = x + dx;
+                        comStoreY      = y + dy;
+                        comStoreX      = x + dx;
                         break;
                     }
                 }
@@ -354,30 +379,30 @@ Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, in
                 for (const auto& [dy, dx] : DIRECTIONS) {
                     if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_OPEN_MASK)) {
                         oppChanceFour = true;
-                        oppStoreY = y + dy;
-                        oppStoreX = x + dx;
+                        oppStoreY     = y + dy;
+                        oppStoreX     = x + dx;
                         break;
                     } else if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_JUMP_MASK)) {
                         oppChanceFour = true;
-                        oppStoreY = y + dy;
-                        oppStoreX = x + dx;
+                        oppStoreY     = y + dy;
+                        oppStoreX     = x + dx;
                         break;
                     } else if (!oppChanceFour && isOpenSequence(board, y, x, dy, dx, oppStone, FOUR_CLOSE_MASK)) {
                         oppChanceFour = true;
-                        oppStoreY = y + dy;
-                        oppStoreX = x + dx;
+                        oppStoreY     = y + dy;
+                        oppStoreX     = x + dx;
                         break;
                     } else if (!oppChanceFour && !oppChanceThree &&
-                                isOpenSequence(board, y, x, dy, dx, oppStone, THREE_OPEN_MASK)) {
+                               isOpenSequence(board, y, x, dy, dx, oppStone, THREE_OPEN_MASK)) {
                         oppChanceThree = true;
-                        oppStoreY = y + dy;
-                        oppStoreX = x + dx;
+                        oppStoreY      = y + dy;
+                        oppStoreX      = x + dx;
                         break;
                     } else if (!oppChanceFour && !oppChanceThree &&
-                                isOpenSequence(board, y, x, dy, dx, oppStone, THREE_JUMP_MASK)) {
+                               isOpenSequence(board, y, x, dy, dx, oppStone, THREE_JUMP_MASK)) {
                         oppChanceThree = true;
-                        oppStoreY = y + dy;
-                        oppStoreX = x + dx;
+                        oppStoreY      = y + dy;
+                        oppStoreX      = x + dx;
                         break;
                     }
                 }
@@ -411,7 +436,7 @@ Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, in
 }
 
 bool isOpenSequence(int board[][BOARD_SIZE], int y, int x, int dy, int dx, int stone, const vector<RowData>& masks) {
-    uint8_t line = 0;
+    uint8_t line  = 0;
     uint8_t empty = 0;
     for (int step = -2; step <= 5; ++step) {
         int ny = y + step * dy;

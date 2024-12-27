@@ -34,7 +34,7 @@ constexpr int BITBOARD_PARTS = (TOTAL_CELLS + 63) / 64;
 constexpr int SEGMENT_SIZE = 64;
 
 // 探索範囲の最大値
-constexpr int LIMIT_SEARCH_MOVE = 81;
+constexpr int LIMIT_SEARCH_MOVE = 121;
 
 // 評価関数用方向
 constexpr array<array<int, 2>, 4> DIRECTIONS = {{{0, 1}, {1, 0}, {1, 1}, {1, -1}}};
