@@ -52,8 +52,8 @@ array<pair<int, int>, LIMIT_SEARCH_MOVE> generateSearchMoves(int y, int x) {
     moves[0] = {cy, cx};
 
     constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-    int steps = 1;
-    int index = 1;
+    int steps                      = 1;
+    int index                      = 1;
 
     while (index < LIMIT_SEARCH_MOVE) {
         for (int i = 0; i < 4; ++i) {
@@ -147,7 +147,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int 
                 localTT.updateHashKey(computer.getStone(), y, x);
 
                 maxEval = std::max(maxEval, eval);
-                alpha = std::max(alpha, eval);
+                alpha   = std::max(alpha, eval);
 
                 if (beta <= alpha) {  // ベータカット
                     localTT.storeEntry(depth, maxEval, BoundType::LOWER_BOUND);
@@ -173,7 +173,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int 
                 localTT.updateHashKey(opponent.getStone(), y, x);
 
                 minEval = std::min(minEval, eval);
-                beta = std::min(beta, eval);
+                beta    = std::min(beta, eval);
 
                 if (beta <= alpha) {  // アルファカット
                     localTT.storeEntry(depth, minEval, BoundType::UPPER_BOUND);
@@ -191,7 +191,7 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int 
 pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int comStone, int oppStone,
                                                 const vector<pair<int, int>>& moves, int depth) {
     pair<int, int> bestMove = {-1, -1};
-    int bestVal = -INF;
+    int bestVal             = -INF;
     vector<future<pair<int, pair<int, int>>>> futures;
     mutex mtx;  // 排他制御用
 
@@ -207,7 +207,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int com
                     lock_guard<mutex> lock(mtx);
                     // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
                     if (moveVal > bestVal) {
-                        bestVal = moveVal;
+                        bestVal  = moveVal;
                         bestMove = pos;
                     }
                     historyHeuristic[pos] = moveVal;
@@ -249,7 +249,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int com
         lock_guard<mutex> lock(mtx);
         // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
         if (moveVal > bestVal) {
-            bestVal = moveVal;
+            bestVal  = moveVal;
             bestMove = pos;
         }
         historyHeuristic[pos] = moveVal;
@@ -267,7 +267,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int com
 pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(int board[][BOARD_SIZE], int comStone, int oppStone,
                                                         const vector<pair<int, int>>& moves, int depth) {
     pair<int, int> bestMove = {-1, -1};
-    int bestVal = -INF;
+    int bestVal             = -INF;
 
     for (const auto& [y, x] : moves) {
         if (board[y][x] == STONE_SPACE) {  // 空白確認
@@ -288,7 +288,7 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(int board[][BOARD_SIZE],
             int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, false, make_pair(y, x), localTT);
 
             if (moveVal > bestVal) {
-                bestVal = moveVal;
+                bestVal  = moveVal;
                 bestMove = make_pair(y, x);
             }
 
@@ -301,29 +301,16 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(int board[][BOARD_SIZE],
 // 反復深化探索
 pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
     pair<int, int> bestMove = {-1, -1};  // 最適手
-    int bestVal = -INF;                  // 初期評価値
-    // 脅威を検出したら相手の置いた手を中心に探索
-    int priorityY = BOARD_SIZE / 2, priorityX = BOARD_SIZE / 2;
-    switch (checkAdvantage(board, comStone, oppStone, priorityY, priorityX)) {
-        case Advantage::COM:
-            cout << "==攻撃重視==" << endl;
-            SearchMoves = generateSearchMoves(priorityY, priorityX);
-            break;
-        case Advantage::OPP:
-            cout << "==防衛重視==" << endl;
-            SearchMoves = generateSearchMoves(priorityY, priorityX);
-            break;
-        case Advantage::DRAW:
-            break;
-    }
+    int bestVal             = -INF;      // 初期評価値
 
     // 動的にソート可能なコピーを作成
-    vector<pair<int, int>> moves(SearchMoves.begin(), SearchMoves.end());
+    vector<pair<int, int>> moves(SPIRAL_MOVES.begin(), SPIRAL_MOVES.end());
 
     // 反復深化探索
     for (int depth = 0; depth < maxDepth; ++depth) {
         cout << "----------\n";
         cout << "探索深度: " << depth + 1 << endl;
+        cout << "探索サイズ" << moves.size() << endl;
 
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
@@ -338,6 +325,10 @@ pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE], int comSto
         // 深さごとの最適手を探索
         tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
 
+        // 探索対象を更新
+        SearchMoves = generateSearchMoves(bestMove.first, bestMove.second);
+        moves.assign(SearchMoves.begin(), SearchMoves.end());
+
         // 深さごとの結果を表示（デバッグ用）
         cout << "深度 " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
@@ -346,9 +337,6 @@ pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE], int comSto
         // 勝利が確定するならすぐ処理を止める
         if (bestVal >= SCORE_FIVE) break;
     }
-
-    // 探索対象を更新
-    SearchMoves = generateSearchMoves(bestMove.first, bestMove.second);
 
     return {bestMove, bestVal};
 }
