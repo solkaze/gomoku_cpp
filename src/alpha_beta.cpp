@@ -336,7 +336,7 @@ pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE], int comSto
         }
 
         // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepthNoThread(board, comStone, oppStone, moves, depth);
+        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
 
         // 深さごとの結果を表示（デバッグ用）
         cout << "深度 " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
