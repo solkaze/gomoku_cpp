@@ -121,6 +121,9 @@ void testPrintBoard(const BitBoard& com, const BitBoard& opp) {
 int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha,
               int beta, bool isMaximizingPlayer, pair<int, int> put,
               TransportationTable& localTT) {
+#ifdef DEBUG_PRINT_CODE
+    testPrintBoard(computer, opponent);
+#endif
     int cachedEval;
     if (localTT.retrieveEntry(depth, alpha, beta, cachedEval,
                               isMaximizingPlayer)) {
@@ -215,8 +218,10 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
                 for (auto& fut : futures) {
                     auto [moveVal, pos] = fut.get();
                     lock_guard<mutex> lock(mtx);
-                    // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first
-                    // << ", " << pos.second << endl;
+#ifdef DEBUG_PRINT_CODE
+                    cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first
+                         << ", " << pos.second << endl;
+#endif
                     if (moveVal > bestVal) {
                         bestVal  = moveVal;
                         bestMove = pos;
@@ -255,6 +260,8 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
 
                 return make_pair(moveVal, make_pair(y, x));
             }));
+        } else {
+            historyHeuristic[{y, x}] = -INF;
         }
     }
 
@@ -262,8 +269,10 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(
     for (auto& fut : futures) {
         auto [moveVal, pos] = fut.get();
         lock_guard<mutex> lock(mtx);
-        // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " <<
-        // pos.second << endl;
+#ifdef DEBUG_PRINT_CODE
+        cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", "
+             << pos.second << endl;
+#endif
         if (moveVal > bestVal) {
             bestVal  = moveVal;
             bestMove = pos;
@@ -324,11 +333,9 @@ pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE],
     pair<int, int> bestMove = {-1, -1};  // 最適手
     int bestVal             = -INF;      // 初期評価値
 
-    // 動的にソート可能なコピーを作成
-    vector<pair<int, int>> moves(SPIRAL_MOVES.begin(), SPIRAL_MOVES.end());
-
     // 反復深化探索
     for (int depth = 0; depth < maxDepth; ++depth) {
+        vector<pair<int, int>> moves(SPIRAL_MOVES.begin(), SPIRAL_MOVES.end());
         cout << "----------\n";
         cout << "探索深度: " << depth + 1 << endl;
         cout << "探索サイズ" << moves.size() << endl;
@@ -343,6 +350,8 @@ pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE],
                  });
             historyHeuristic.clear();
         }
+
+        moves.resize(min(moves.size(), (size_t)LIMIT_SEARCH_MOVE));
 
         // 深さごとの最適手を探索
         tie(bestMove, bestVal) =

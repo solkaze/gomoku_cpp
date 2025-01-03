@@ -43,7 +43,7 @@ class BitBoard {
     }
 
     // 範囲外確認
-    static bool isInBounds(const int y, const int x) {
+    inline static bool isInBounds(const int y, const int x) {
         return y >= 0 && y < BOARD_SIZE && x >= 0 && x < BOARD_SIZE;
     }
 
