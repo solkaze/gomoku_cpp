@@ -10,11 +10,14 @@
 //*==================================================
 
 // 最適解探索
-pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone, int oppStone) {
+pair<int, int> findBestMove(int board[][BOARD_SIZE], int comStone,
+                            int oppStone) {
     // 反復深化探索を呼び出して最適手を取得
-    auto [bestMove, bestVal] = iterativeDeepening(board, comStone, oppStone, MAX_DEPTH);
+    auto [bestMove, bestVal] =
+        iterativeDeepening(board, comStone, oppStone, MAX_DEPTH);
     cout << "----------\n";
-    cout << "最終的な最適手: " << bestMove.second << ", " << bestMove.first << endl;
+    cout << "最終的な最適手: " << bestMove.second << ", " << bestMove.first
+         << endl;
     cout << "評価値: " << bestVal << endl;
     cout << "----------\n";
     return bestMove;
@@ -47,7 +50,8 @@ int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y) {
     pair<int, int> bestMove = findBestMove(board, comStone, oppStone);
 
     auto end = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+    auto duration =
+        chrono::duration_cast<chrono::milliseconds>(end - start).count();
     cout << "----------\n";
     cout << "処理時間: " << duration << "ミリ秒\n";
     cout << "----------\n";

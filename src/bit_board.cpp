@@ -14,9 +14,11 @@ void BitBoard::convertToBitboards(int board[][BOARD_SIZE]) {
     }
 }
 
-pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const int dy, const int dx, const int start,
+pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x,
+                                                 const int dy, const int dx,
+                                                 const int start,
                                                  const int end) const {
-    uint32_t bitLine = 0;
+    uint32_t bitLine   = 0;
     uint32_t emptyLine = 0;
 
     for (int step = start; step < end; ++step) {
@@ -24,11 +26,12 @@ pair<uint32_t, uint32_t> BitBoard::putOutBitLine(const int y, const int x, const
         int nx = x + dx * step;
 
         // 範囲外チェックを条件分岐内で行う
-        if (ny < 0 || ny >= K_BOARD_SIZE || nx < 0 || nx >= K_BOARD_SIZE) continue;
+        if (ny < 0 || ny >= K_BOARD_SIZE || nx < 0 || nx >= K_BOARD_SIZE)
+            continue;
 
         // ビットボードのチェック（インライン化されたヘルパーを使用）
-        int index = (ny * K_BOARD_SIZE + nx) / SEGMENT_SIZE;
-        int shift = (ny * K_BOARD_SIZE + nx) % SEGMENT_SIZE;
+        int index     = (ny * K_BOARD_SIZE + nx) / SEGMENT_SIZE;
+        int shift     = (ny * K_BOARD_SIZE + nx) % SEGMENT_SIZE;
         uint64_t mask = (1ULL << shift);
 
         if (bitBoard[index] & mask) {

@@ -25,10 +25,15 @@ class BitBoard {
     BitBoard() = delete;
 
     explicit BitBoard(int stone, shared_ptr<BitLine> sharedEmptyBoard)
-        : bitBoard({0, 0, 0, 0}), emptyBoard(move(sharedEmptyBoard)), stone(stone) {}
+        : bitBoard({0, 0, 0, 0}),
+          emptyBoard(move(sharedEmptyBoard)),
+          stone(stone) {}
 
-    explicit BitBoard(int stone, int board[][BOARD_SIZE], shared_ptr<BitLine> sharedEmptyBoard)
-        : bitBoard({0, 0, 0, 0}), emptyBoard(move(sharedEmptyBoard)), stone(stone) {
+    explicit BitBoard(int stone, int board[][BOARD_SIZE],
+                      shared_ptr<BitLine> sharedEmptyBoard)
+        : bitBoard({0, 0, 0, 0}),
+          emptyBoard(move(sharedEmptyBoard)),
+          stone(stone) {
         convertToBitboards(board);
     }
 
@@ -44,8 +49,10 @@ class BitBoard {
 
     // コマを置く
     inline void setBit(const int y, const int x) {
-        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE || checkBit(y, x)) return;
-        int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
+        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE ||
+            checkBit(y, x))
+            return;
+        int part  = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
         int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
 
         bitBoard[part] |= 1ULL << shift;
@@ -54,8 +61,10 @@ class BitBoard {
 
     // コマを取る
     inline void removeBit(const int y, const int x) {
-        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE || !checkBit(y, x)) return;
-        int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
+        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE ||
+            !checkBit(y, x))
+            return;
+        int part  = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
         int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
 
         bitBoard[part] &= ~(1ULL << shift);
@@ -64,8 +73,9 @@ class BitBoard {
 
     // コマを調べる
     inline bool checkBit(const int y, const int x) const {
-        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE) return false;
-        int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
+        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE)
+            return false;
+        int part  = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
         int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
 
         return bitBoard[part] & (1ULL << shift);
@@ -73,8 +83,9 @@ class BitBoard {
 
     // 空白を調べる
     bool checkEmptyBit(const int y, const int x) const {
-        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE) return false;
-        int part = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
+        if (y < 0 || y >= K_BOARD_SIZE || x < 0 || x >= K_BOARD_SIZE)
+            return false;
+        int part  = (y * K_BOARD_SIZE + x) / SEGMENT_SIZE;
         int shift = (y * K_BOARD_SIZE + x) % SEGMENT_SIZE;
 
         return (*emptyBoard)[part] & (1ULL << shift);
@@ -84,7 +95,9 @@ class BitBoard {
     void convertToBitboards(int board[][BOARD_SIZE]);
 
     // 特定のビット列を抜き出す
-    pair<uint32_t, uint32_t> putOutBitLine(const int y, const int x, const int dy, const int dx, const int start,
+    pair<uint32_t, uint32_t> putOutBitLine(const int y, const int x,
+                                           const int dy, const int dx,
+                                           const int start,
                                            const int end) const;
 
     // テスト用表示

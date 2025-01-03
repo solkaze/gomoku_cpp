@@ -14,7 +14,8 @@
 #define YOKO 5  // ─
 #define RIGT 9  // ／
 
-extern int gameEndProcess(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE]);
+extern int gameEndProcess(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE],
+                          int c44Board[][BOARD_SIZE]);
 
 extern int calcPutPos(int board[][BOARD_SIZE], int com, int *pos_x, int *pos_y);
 extern int checkOutPos(int x, int y);

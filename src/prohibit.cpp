@@ -1,7 +1,8 @@
+#include "prohibit.hpp"
+
 #include <array>
 
 #include "csv_data.hpp"
-#include "prohibit.hpp"
 
 // 33禁判定
 CSVData threePrihibitCSV("data/three_prohibit_mask.csv");
@@ -9,7 +10,7 @@ CSVData threePrihibitCSV("data/three_prohibit_mask.csv");
 CSVData fourProhibitCSV("data/four_prohibit_mask.csv");
 
 const auto THREE_PROHIBIT_MASK = threePrihibitCSV.getData();
-const auto FOUR_PROHIBIT_MASK = fourProhibitCSV.getData();
+const auto FOUR_PROHIBIT_MASK  = fourProhibitCSV.getData();
 
 bool isProhibitedThreeThree(const BitBoard& bitBoard, int y, int x) {
     int threeCount = 0;
@@ -90,9 +91,12 @@ bool isProhibitedLongLens(const BitBoard& bitBoard, int y, int x) {
 }
 
 bool isProhibited(const BitBoard& bitBoard, int y, int x) {
-    if (PROHIBITED_THREE_THREE && isProhibitedThreeThree(bitBoard, y, x)) return true;
-    if (PROHIBITED_FOUR_FOUR && isProhibitedFourFour(bitBoard, y, x)) return true;
-    if (PROHIBITED_LONG_LENS && isProhibitedLongLens(bitBoard, y, x)) return true;
+    if (PROHIBITED_THREE_THREE && isProhibitedThreeThree(bitBoard, y, x))
+        return true;
+    if (PROHIBITED_FOUR_FOUR && isProhibitedFourFour(bitBoard, y, x))
+        return true;
+    if (PROHIBITED_LONG_LENS && isProhibitedLongLens(bitBoard, y, x))
+        return true;
 
     return false;
 }

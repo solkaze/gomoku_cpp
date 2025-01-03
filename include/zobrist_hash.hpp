@@ -20,7 +20,8 @@ struct TTEntry {
 
 class TransportationTable {
    private:
-    static array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE> zobristTable;  // Zobristハッシュテーブル
+    static array<array<array<uint64_t, 2>, BOARD_SIZE>, BOARD_SIZE>
+        zobristTable;  // Zobristハッシュテーブル
 
     static unordered_map<uint64_t, TTEntry> globalTable;
     static shared_mutex globalTableMutex;  // 読み取り用のロック
@@ -61,9 +62,11 @@ class TransportationTable {
         table[currentHashKey] = {score, dipth, flag};
     }
 
-    bool retrieveEntry(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
+    bool retrieveEntry(int depth, int& alpha, int& beta, int& score,
+                       bool isMaximizingPlayer) const;
 
-    bool retrieveEntryFromGlobal(int depth, int& alpha, int& beta, int& score, bool isMaximizingPlayer) const;
+    bool retrieveEntryFromGlobal(int depth, int& alpha, int& beta, int& score,
+                                 bool isMaximizingPlayer) const;
 
     void mergeTo() const;
 

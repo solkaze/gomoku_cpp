@@ -18,10 +18,12 @@ constexpr int SCORE_THREE_JUMP  = 1000;        // 3連飛び
 constexpr int SCORE_THREE_CLOSE = 500;         // 3連片側空き
 constexpr int SCORE_TWO_OPEN    = 100;         // 2連両端空き
 
-GameSet isWin(const BitBoard& computer, const BitBoard& opponent, pair<int, int> put);
+GameSet isWin(const BitBoard& computer, const BitBoard& opponent,
+              pair<int, int> put);
 
 int evaluate(const BitBoard& computer, const BitBoard& opponent);
 
-Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone, int& putY, int& putX);
+Advantage checkAdvantage(int board[][BOARD_SIZE], int comStone, int oppStone,
+                         int& putY, int& putX);
 
 #endif

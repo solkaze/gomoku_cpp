@@ -15,11 +15,12 @@
 int inputPutPos(int board[][BOARD_SIZE], int which, int com);
 void changeTurn(int *which_turn);
 int checkOutPos(int x, int y);
-int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE], int *which_turn,
-             int *com);
+int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE],
+             int c44Board[][BOARD_SIZE], int *which_turn, int *com);
 void boardInit(int board[][BOARD_SIZE]);
 void boardPrint(int board[][BOARD_SIZE]);
-int gameEndProcess(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE]);
+int gameEndProcess(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE],
+                   int c44Board[][BOARD_SIZE]);
 
 int check = 3;  // 1:三三のみ 2:四四のみ 4:長連のみ 3:三三と四四 5:三三と長連
                 // 6:四四と長連 7:全部
@@ -71,12 +72,14 @@ int inputPutPos(int board[][BOARD_SIZE], int which, int com) {
         printf("%s", (which == 1) ? "● " : "○ ");
         printf("の番です。どこに置きますか x y の順に入力してください\n> ");
         while (1) {
-            if (fgets(buf, sizeof buf, stdin) == NULL || buf[0] == '\n') return 1;
+            if (fgets(buf, sizeof buf, stdin) == NULL || buf[0] == '\n')
+                return 1;
             if (sscanf(buf, "%d %d", &pos_x, &pos_y) != 2) {
                 printf("不正な入力です\n >");
                 continue;
             }
-            if (checkOutPos(pos_x, pos_y) && board[pos_y][pos_x] == STONE_SPACE) {
+            if (checkOutPos(pos_x, pos_y) &&
+                board[pos_y][pos_x] == STONE_SPACE) {
                 break;
             } else {
                 printf("不正な入力です\n> ");
@@ -105,8 +108,8 @@ int checkOutPos(int x, int y) {
 //-------------------------------------------------
 // ゲーム情報初期化
 //-------------------------------------------------
-int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE], int c44Board[][BOARD_SIZE], int *which_turn,
-             int *com) {
+int gameInit(int board[][BOARD_SIZE], int c33Board[][BOARD_SIZE],
+             int c44Board[][BOARD_SIZE], int *which_turn, int *com) {
     int in = -1;
     char buf[256];
     do {

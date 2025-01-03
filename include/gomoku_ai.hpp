@@ -37,7 +37,8 @@ constexpr int SEGMENT_SIZE = 64;
 constexpr int LIMIT_SEARCH_MOVE = TOTAL_CELLS;
 
 // 評価関数用方向
-constexpr array<array<int, 2>, 4> DIRECTIONS = {{{0, 1}, {1, 0}, {1, 1}, {1, -1}}};
+constexpr array<array<int, 2>, 4> DIRECTIONS = {
+    {{0, 1}, {1, 0}, {1, 1}, {1, -1}}};
 
 // コンパイル時に自動生成
 constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
@@ -55,7 +56,8 @@ constexpr array<pair<int, int>, TOTAL_CELLS> generateSpiralMoves() {
             for (int j = 0; j < steps && index < TOTAL_CELLS; ++j) {
                 cy += directions[i][0];
                 cx += directions[i][1];
-                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 && cx < K_BOARD_SIZE) {
+                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 &&
+                    cx < K_BOARD_SIZE) {
                     moves[index++] = {cy, cx};
                 }
             }

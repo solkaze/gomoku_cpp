@@ -26,8 +26,9 @@ array<pair<int, int>, LIMIT_SEARCH_MOVE> generateSearchMoves(int y, int x);
 
 void testPrintBoard(const BitBoard& com, const BitBoard& opp);
 
-int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int beta, bool isMaximizingPlayer,
-              pair<int, int> put, TransportationTable& localTT);
+int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha,
+              int beta, bool isMaximizingPlayer, pair<int, int> put,
+              TransportationTable& localTT);
 
 //*====================
 //* グローバル変数
@@ -40,7 +41,8 @@ unordered_map<pair<int, int>, int, pair_hash> historyHeuristic;
 shared_mutex globalTTMutex;
 
 // 探索の配列
-array<pair<int, int>, LIMIT_SEARCH_MOVE> SearchMoves = generateSearchMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
+array<pair<int, int>, LIMIT_SEARCH_MOVE> SearchMoves =
+    generateSearchMoves(K_BOARD_SIZE / 2, K_BOARD_SIZE / 2);
 
 //*====================
 //* 関数実装
@@ -52,15 +54,17 @@ array<pair<int, int>, LIMIT_SEARCH_MOVE> generateSearchMoves(int y, int x) {
     moves[0] = {cy, cx};
 
     constexpr int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-    int steps                      = 1;
-    int index                      = 1;
+
+    int steps = 1;
+    int index = 1;
 
     while (index < LIMIT_SEARCH_MOVE) {
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < steps && index < LIMIT_SEARCH_MOVE; ++j) {
                 cy += directions[i][0];
                 cx += directions[i][1];
-                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 && cx < K_BOARD_SIZE) {
+                if (cy >= 0 && cy < K_BOARD_SIZE && cx >= 0 &&
+                    cx < K_BOARD_SIZE) {
                     moves[index++] = {cy, cx};
                 }
             }
@@ -72,7 +76,8 @@ array<pair<int, int>, LIMIT_SEARCH_MOVE> generateSearchMoves(int y, int x) {
 
 void testPrintHistoryHeuristic(vector<pair<int, int>>& moves) {
     for (const auto& [y, x] : moves) {
-        cout << "(" << y << ", " << x << ")->\t" << historyHeuristic[{y, x}] << endl;
+        cout << "(" << y << ", " << x << ")->\t" << historyHeuristic[{y, x}]
+             << endl;
     }
     this_thread::sleep_for(chrono::seconds(1));
 }
@@ -113,10 +118,12 @@ void testPrintBoard(const BitBoard& com, const BitBoard& opp) {
     cout << endl;
 }
 
-int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int beta, bool isMaximizingPlayer,
-              pair<int, int> put, TransportationTable& localTT) {
+int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha,
+              int beta, bool isMaximizingPlayer, pair<int, int> put,
+              TransportationTable& localTT) {
     int cachedEval;
-    if (localTT.retrieveEntry(depth, alpha, beta, cachedEval, isMaximizingPlayer)) {
+    if (localTT.retrieveEntry(depth, alpha, beta, cachedEval,
+                              isMaximizingPlayer)) {
         return cachedEval;
     }
 
@@ -141,7 +148,8 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int 
                 computer.setBit(y, x);
                 localTT.updateHashKey(computer.getStone(), y, x);
 
-                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, false, make_pair(y, x), localTT);
+                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta,
+                                     false, make_pair(y, x), localTT);
 
                 computer.removeBit(y, x);
                 localTT.updateHashKey(computer.getStone(), y, x);
@@ -167,7 +175,8 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int 
                 opponent.setBit(y, x);
                 localTT.updateHashKey(opponent.getStone(), y, x);
 
-                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta, true, make_pair(y, x), localTT);
+                int eval = alphaBeta(computer, opponent, depth - 1, alpha, beta,
+                                     true, make_pair(y, x), localTT);
 
                 opponent.removeBit(y, x);
                 localTT.updateHashKey(opponent.getStone(), y, x);
@@ -188,8 +197,9 @@ int alphaBeta(BitBoard& computer, BitBoard& opponent, int depth, int alpha, int 
     }
 }
 
-pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int comStone, int oppStone,
-                                                const vector<pair<int, int>>& moves, int depth) {
+pair<pair<int, int>, int> searchBestMoveAtDepth(
+    int board[][BOARD_SIZE], int comStone, int oppStone,
+    const vector<pair<int, int>>& moves, int depth) {
     pair<int, int> bestMove = {-1, -1};
     int bestVal             = -INF;
     vector<future<pair<int, pair<int, int>>>> futures;
@@ -205,7 +215,8 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int com
                 for (auto& fut : futures) {
                     auto [moveVal, pos] = fut.get();
                     lock_guard<mutex> lock(mtx);
-                    // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
+                    // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first
+                    // << ", " << pos.second << endl;
                     if (moveVal > bestVal) {
                         bestVal  = moveVal;
                         bestMove = pos;
@@ -216,21 +227,25 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int com
             }
 
             // 非同期タスクで評価を実行
-            futures.emplace_back(async(launch::async, [=, &bestVal, &localTTs, &mtx]() {
+            futures.emplace_back(async(launch::async, [=, &bestVal, &localTTs,
+                                                       &mtx]() {
                 auto emptyBoard = make_shared<BitLine>();
-                fill(emptyBoard->begin(), emptyBoard->end(), 0xFFFFFFFFFFFFFFFF);
+                fill(emptyBoard->begin(), emptyBoard->end(),
+                     0xFFFFFFFFFFFFFFFF);
 
                 BitBoard localCom(comStone, board, emptyBoard);
                 BitBoard localOpp(oppStone, board, emptyBoard);
 
-                TransportationTable localTT(board);  // 各スレッドで独自のTTを作成
+                TransportationTable localTT(
+                    board);  // 各スレッドで独自のTTを作成
 
                 // ビットボードに現在の手を設定
                 localCom.setBit(y, x);
                 localTT.updateHashKey(localCom.getStone(), y, x);
 
                 // アルファ・ベータ探索を実行
-                int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, false, make_pair(y, x), localTT);
+                int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF,
+                                        false, make_pair(y, x), localTT);
 
                 // ローカルTTをリストに保存
                 {
@@ -247,7 +262,8 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int com
     for (auto& fut : futures) {
         auto [moveVal, pos] = fut.get();
         lock_guard<mutex> lock(mtx);
-        // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " << pos.second << endl;
+        // cout << "moveVal:\t" << moveVal << " pos:\t" << pos.first << ", " <<
+        // pos.second << endl;
         if (moveVal > bestVal) {
             bestVal  = moveVal;
             bestMove = pos;
@@ -264,8 +280,9 @@ pair<pair<int, int>, int> searchBestMoveAtDepth(int board[][BOARD_SIZE], int com
 }
 
 // スレッドなしバージョン
-pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(int board[][BOARD_SIZE], int comStone, int oppStone,
-                                                        const vector<pair<int, int>>& moves, int depth) {
+pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(
+    int board[][BOARD_SIZE], int comStone, int oppStone,
+    const vector<pair<int, int>>& moves, int depth) {
     pair<int, int> bestMove = {-1, -1};
     int bestVal             = -INF;
 
@@ -278,14 +295,16 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(int board[][BOARD_SIZE],
             BitBoard localCom(comStone, board, emptyBoard);
             BitBoard localOpp(oppStone, board, emptyBoard);
 
-            TransportationTable localTT(board);  // 各スレッドで独自のトランスポーテーションテーブルを作成
+            TransportationTable localTT(
+                board);  // 各スレッドで独自のトランスポーテーションテーブルを作成
 
             // ビットボードに現在の手を設定
             localCom.setBit(y, x);
             localTT.updateHashKey(localCom.getStone(), y, x);
 
             // アルファ・ベータ探索を実行
-            int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF, false, make_pair(y, x), localTT);
+            int moveVal = alphaBeta(localCom, localOpp, depth, bestVal, INF,
+                                    false, make_pair(y, x), localTT);
 
             if (moveVal > bestVal) {
                 bestVal  = moveVal;
@@ -299,7 +318,9 @@ pair<pair<int, int>, int> searchBestMoveAtDepthNoThread(int board[][BOARD_SIZE],
     return {bestMove, bestVal};
 }
 // 反復深化探索
-pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE], int comStone, int oppStone, int maxDepth) {
+pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE],
+                                             int comStone, int oppStone,
+                                             int maxDepth) {
     pair<int, int> bestMove = {-1, -1};  // 最適手
     int bestVal             = -INF;      // 初期評価値
 
@@ -314,23 +335,26 @@ pair<pair<int, int>, int> iterativeDeepening(int board[][BOARD_SIZE], int comSto
 
         // 前回の最適手を基にソート（初回はそのまま）
         if (bestMove.first != -1 && bestMove.second != -1) {
-            sort(moves.begin(), moves.end(), [&](const pair<int, int>& a, const pair<int, int>& b) {
-                if (a == bestMove) return true;
-                if (b == bestMove) return false;
-                return historyHeuristic[a] > historyHeuristic[b];
-            });
+            sort(moves.begin(), moves.end(),
+                 [&](const pair<int, int>& a, const pair<int, int>& b) {
+                     if (a == bestMove) return true;
+                     if (b == bestMove) return false;
+                     return historyHeuristic[a] > historyHeuristic[b];
+                 });
             historyHeuristic.clear();
         }
 
         // 深さごとの最適手を探索
-        tie(bestMove, bestVal) = searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
+        tie(bestMove, bestVal) =
+            searchBestMoveAtDepth(board, comStone, oppStone, moves, depth);
 
         // 探索対象を更新
         SearchMoves = generateSearchMoves(bestMove.first, bestMove.second);
         moves.assign(SearchMoves.begin(), SearchMoves.end());
 
         // 深さごとの結果を表示（デバッグ用）
-        cout << "深度 " << depth + 1 << " の最適手: " << bestMove.second << ", " << bestMove.first << endl;
+        cout << "深度 " << depth + 1 << " の最適手: " << bestMove.second << ", "
+             << bestMove.first << endl;
         cout << "評価値: " << bestVal << endl;
         cout << "----------\n";
 

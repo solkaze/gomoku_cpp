@@ -14,7 +14,7 @@ CSVData::CSVData(const string& filename) {
     while (getline(file, line)) {
         stringstream ss(line);
         string cell;
-        RowData row = {0, 0, 0};  // 構造体の初期化
+        RowData row     = {0, 0, 0};  // 構造体の初期化
         size_t colIndex = 0;
 
         while (getline(ss, cell, ',')) {
